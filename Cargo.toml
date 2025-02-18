@@ -1,0 +1,14 @@
+[package]
+name = "sqli"
+version = "0.1.0"
+authors = ["Jarrod Servilla <jarrod.servilla@gmail.com>"]
+license = "GPL-3.0-or-later"
+description = ""
+readme = "README.md"
+homepage = "https://github.com/jcserv/sqli"
+repository = "https://github.com/jcserv/sqli"
+keywords = ["cli", "env", "config", "environment"]
+categories = ["command-line-utilities", "development-tools"]
+edition = "2021"
+
+[dependencies]
