@@ -1,5 +1,4 @@
-use std::io;
-
+use anyhow::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
     buffer::Buffer,
@@ -11,6 +10,13 @@ use ratatui::{
     DefaultTerminal, Frame,
 };
 
+pub fn run_tui() -> Result<()> {
+    let mut terminal = ratatui::init();
+    let app_result = App::default().run(&mut terminal);
+    ratatui::restore();
+    app_result
+}
+
 #[derive(Debug, Default)]
 pub struct App {
     counter: u8,
@@ -18,7 +24,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<()> {
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_events()?;
@@ -30,7 +36,7 @@ impl App {
         frame.render_widget(self, frame.area());
     }
 
-    fn handle_events(&mut self) -> io::Result<()> {
+    fn handle_events(&mut self) -> Result<()> {
         match event::read()? {
             // it's important to check that the event is a key press event as
             // crossterm also emits key release and repeat events on Windows.
@@ -123,7 +129,7 @@ mod tests {
     }
 
     #[test]
-    fn handle_key_event() -> io::Result<()> {
+    fn handle_key_event() -> Result<()> {
         let mut app = App::default();
         app.handle_key_event(KeyCode::Right.into());
         assert_eq!(app.counter, 1);

@@ -12,6 +12,9 @@ categories = ["command-line-utilities", "development-tools"]
 edition = "2021"
 
 [dependencies]
+anyhow = { version = "1.0.95", features = ["backtrace"] }
+clap = { version = "4.5.30", features = ["derive"] }
 color-eyre = "0.6.3"
 crossterm = "0.28.1"
 ratatui = "0.29.0"
+serde = { version = "1.0.217", features = ["derive"] }

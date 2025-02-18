@@ -21,9 +21,9 @@ sqli (see-quer-li) is a command-line interface sql client that allows you to con
 
 ### cli ▶️
 1. `sqli config add --name local --url postgres://user:password@host:port/database` - add a new profile
-2. `sqli postgres://user:password@host:port/database "SELECT * FROM table;"` - ad-hoc query
-3. `sqli --profile local --query "SELECT * FROM table;"` - use a pre-configured profile
-4. `sqli --profile local --file path/to/file.sql` - execute a sql query from a file
+2. `sqli query --url postgres://user:password@host:port/database "SELECT * FROM table;"` - ad-hoc query
+3. `sqli query --profile local --query "SELECT * FROM table;"` - use a pre-configured profile
+4. `sqli query --profile local --file path/to/file.sql` - execute a sql query from a file
 
 ## references 📚
 
