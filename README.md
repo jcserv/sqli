@@ -1,6 +1,6 @@
 # sqli
 
-sqli (see-quer-li) is a command-line interface sql client that allows you to connect to a database and run queries.
+sqli is a command-line interface sql client that allows you to connect to a database and run queries.
 
 ## features 🚀
 
