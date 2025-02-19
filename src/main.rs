@@ -2,7 +2,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 use tokio;
 
-use sqli::tui::run_tui;
+use sqli::tui::run::run_tui;
 use sqli::query::run_query;
 
 #[derive(Parser)]
