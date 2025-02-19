@@ -10,9 +10,9 @@ pub enum Mode {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Tab {
-    History,
     Collections,
-    Response,
+    Workspace,
+    Result,
 }
 
 pub struct App {
@@ -30,7 +30,7 @@ impl App {
     pub fn new() -> Self {
         Self {
             mode: Mode::Normal,
-            current_tab: Tab::History,
+            current_tab: Tab::Collections,
             query: String::new(),
             command_input: String::new(),
             message: String::new(),
@@ -65,7 +65,10 @@ impl App {
                 self.cycle_tab();
                 Ok(false)
             }
-            _ => Ok(false),
+            _ => {
+                self.handle_query_write(key_event);
+                Ok(false)
+            },
         }
     }
 
@@ -100,9 +103,9 @@ impl App {
 
     fn cycle_tab(&mut self) {
         self.current_tab = match self.current_tab {
-            Tab::History => Tab::Collections,
-            Tab::Collections => Tab::Response,
-            Tab::Response => Tab::History,
+            Tab::Collections => Tab::Workspace,
+            Tab::Workspace => Tab::Result,
+            Tab::Result => Tab::Collections,
         };
     }
 
@@ -115,6 +118,10 @@ impl App {
             _ => self.message = format!("Unknown command: {}", cmd),
         }
         Ok(())
+    }
+
+    fn handle_query_write(&mut self, key_event: KeyEvent) {
+        self.query.push_str(&key_event.code.to_string());
     }
 
     fn save_query(&mut self) {

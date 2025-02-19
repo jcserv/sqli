@@ -16,6 +16,25 @@ impl UI {
     }
 
     pub fn render(&self, app: &App, frame: &mut Frame) {
+        let outer_padding = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Length(1),    // Left padding
+                Constraint::Min(0),       // Content
+                Constraint::Length(1),    // Right padding
+            ])
+            .split(frame.area());
+
+        let vertical_padding = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(1),    // Top padding
+                Constraint::Min(0),       // Content
+                Constraint::Length(1),    // Bottom padding
+            ])
+            .split(outer_padding[1]);
+
+        // Main content area within the padding
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -24,7 +43,7 @@ impl UI {
                 Constraint::Min(0),     // Main content
                 Constraint::Length(3),  // Status line
             ])
-            .split(frame.area());
+            .split(vertical_padding[1]);
 
         self.render_app_info(app, frame, chunks[0]);
         self.render_tabs(app, frame, chunks[1]);
@@ -34,7 +53,7 @@ impl UI {
 
     fn render_app_info(&self, _app: &App, frame: &mut Frame, area: Rect) {
         let line: Line = vec![
-            "sqli".white().bold(),
+            " sqli".white().bold(),
             " ".into(),
             "v0.1.0".white().into(),
         ].into();
@@ -46,7 +65,7 @@ impl UI {
     }
 
     fn render_tabs(&self, app: &App, frame: &mut Frame, area: Rect) {
-        let titles = vec!["History", "Collections", "Response"]
+        let titles = vec!["Collections", "Workspace", "Result"]
             .iter()
             .map(|t| Span::styled(*t, Style::default().fg(Color::LightBlue)))
             .collect::<Vec<_>>();
@@ -54,9 +73,9 @@ impl UI {
         let tabs = Tabs::new(titles)
             .block(Block::default().borders(Borders::ALL).title("Tabs"))
             .select(match app.current_tab {
-                Tab::History => 0,
-                Tab::Collections => 1,
-                Tab::Response => 2,
+                Tab::Collections => 0,
+                Tab::Workspace => 1,
+                Tab::Result => 2,
             })
             .style(Style::default().fg(Color::Blue))
             .highlight_style(Style::default().fg(Color::White));
@@ -66,28 +85,10 @@ impl UI {
 
     fn render_main_content(&self, app: &App, frame: &mut Frame, area: Rect) {
         match app.current_tab {
-            Tab::History => self.render_history(app, frame, area),
             Tab::Collections => self.render_collections(app, frame, area),
-            Tab::Response => self.render_response(app, frame, area),
+            Tab::Workspace => self.render_workspace(app, frame, area),
+            Tab::Result => self.render_result(app, frame, area),
         }
-    }
-
-    fn render_history(&self, app: &App, frame: &mut Frame, area: Rect) {
-        let block = Block::default()
-            .title("Query History").white().bold()
-            .borders(Borders::ALL);
-        
-        let queries = app.queries
-            .iter()
-            .map(|q| q.as_str())
-            .collect::<Vec<_>>()
-            .join("\n");
-
-        let paragraph = Paragraph::new(queries)
-            .block(block)
-            .style(Style::default().fg(Color::LightBlue));
-
-        frame.render_widget(paragraph, area);
     }
 
     fn render_collections(&self, app: &App, frame: &mut Frame, area: Rect) {
@@ -108,9 +109,21 @@ impl UI {
         frame.render_widget(paragraph, area);
     }
 
-    fn render_response(&self, _app: &App, frame: &mut Frame, area: Rect) {
+    fn render_workspace(&self, app: &App, frame: &mut Frame, area: Rect) {
         let block = Block::default()
-            .title("Response").white().bold()
+            .title("Workspace").white().bold()
+            .borders(Borders::ALL);
+
+        let paragraph = Paragraph::new(app.query.clone())
+            .block(block)
+            .style(Style::default().fg(Color::LightBlue));
+
+        frame.render_widget(paragraph, area);
+    }
+
+    fn render_result(&self, _app: &App, frame: &mut Frame, area: Rect) {
+        let block = Block::default()
+            .title("Result").white().bold()
             .borders(Borders::ALL);
 
         frame.render_widget(block, area);

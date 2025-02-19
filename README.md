@@ -44,3 +44,5 @@ or
 - [curl](https://github.com/curl/curl)
 - [posting](https://github.com/darrenburns/posting)
 - [bruno](https://github.com/usebruno/bruno)
+
+<!-- gitingest . -e /target/ -e /LICENSE -e /Cargo.lock -e /digest.txt -->
