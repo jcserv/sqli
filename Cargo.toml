@@ -18,3 +18,5 @@ color-eyre = "0.6.3"
 crossterm = "0.28.1"
 ratatui = "0.29.0"
 serde = { version = "1.0.217", features = ["derive"] }
+sqlx = { version = "0.8.1", features = ["chrono", "postgres", "runtime-async-std-native-tls", "uuid"] }
+tokio = { version = "1.43.0", features = ["full", "macros"] }
