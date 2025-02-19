@@ -24,7 +24,6 @@ impl Executor for PostgresExecutor {
 
     let mut tx = pool.begin().await?;
 
-    // todo: check if sql is a file, if so, read file contents
     match sqlx::query(&self.sql)
         .execute(&mut *tx)
         .await 
