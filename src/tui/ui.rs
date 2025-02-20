@@ -18,84 +18,91 @@ impl UI {
     pub fn render(&self, app: &App, frame: &mut Frame) {
         let search_height = if app.search.open { 3 } else { 0 };
 
-        let outer_padding = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Length(1),    // Left padding
-                Constraint::Min(0),       // Content
-                Constraint::Length(1),    // Right padding
-            ])
-            .split(frame.area());
-
-        let vertical_padding = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(1),    // Top padding
-                Constraint::Min(0),       // Content
-                Constraint::Length(1),    // Bottom padding
-            ])
-            .split(outer_padding[1]);
-
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(1),                // App info
-                Constraint::Length(3),                // Tabs
-                Constraint::Length(search_height),    // Search box
-                Constraint::Min(0),                   // Main content
-                Constraint::Length(3),                // Status line
+                Constraint::Length(2),     
+                Constraint::Min(0),        
+                Constraint::Length(3),    
             ])
-            .split(vertical_padding[1]);
+            .split(frame.area());
 
-        self.render_app_info(app, frame, chunks[0]);
-        self.render_tabs(app, frame, chunks[1]);
-        
-        if app.search.open {
-            frame.render_widget(&app.search.textarea, chunks[2]);
-        }
-        
-        self.render_main_content(app, frame, chunks[3]);
-        self.render_instructions(app, frame, chunks[4]);
+        let top_bar = chunks[0];
+        let main_area = chunks[1];
+        let status_area = chunks[2];
+
+        self.render_app_info(app, frame, top_bar);
+
+        let main_chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage(10),    // Collections tree
+                Constraint::Percentage(90),    // Right side
+            ])
+            .split(main_area);
+
+        let left_panel = main_chunks[0];
+        let right_panel = main_chunks[1];
+
+        let right_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Percentage(70),    // Workspace
+                Constraint::Percentage(30),    // Results
+            ])
+            .split(right_panel);
+
+        let workspace_area = right_chunks[0];
+        let results_area = right_chunks[1];
+
+        self.render_collections(app, frame, left_panel);
+        self.render_workspace(app, frame, workspace_area, search_height);
+        self.render_result(app, frame, results_area);
+        self.render_instructions(app, frame, status_area);
     }
 
-    fn render_app_info(&self, _app: &App, frame: &mut Frame, area: Rect) {
-        let line: Line = vec![
-            " sqli".white().bold(),
-            " ".into(),
-            "v0.1.0".white().into(),
-        ].into();
+    fn render_app_info(&self, app: &App, frame: &mut Frame, area: Rect) {
+        let app_info_line = Line::from(vec![
+            " sqli ".white().bold(),
+            "v0.1.0 ".white().into(),
+        ]);
 
-        let block = Block::default()
-            .title(line);
-
-        frame.render_widget(block, area);
-    }
-
-    fn render_tabs(&self, app: &App, frame: &mut Frame, area: Rect) {
         let titles = vec!["Collections", "Workspace", "Result"]
             .iter()
-            .map(|t| Span::styled(*t, Style::default().fg(Color::LightBlue)))
+            .enumerate()
+            .map(|(i, t)| {
+                let index = match i {
+                    0 => Tab::Collections,
+                    1 => Tab::Workspace,
+                    _ => Tab::Result,
+                };
+                
+                if app.current_tab == index {
+                    Span::styled(*t, Style::default().fg(Color::White))
+                } else {
+                    Span::styled(*t, Style::default().fg(Color::Gray))
+                }
+            })
             .collect::<Vec<_>>();
 
         let tabs = Tabs::new(titles)
-            .block(Block::default().borders(Borders::ALL).title("Tabs"))
-            .select(match app.current_tab {
-                Tab::Collections => 0,
-                Tab::Workspace => 1,
-                Tab::Result => 2,
-            })
-            .style(Style::default().fg(Color::Blue))
-            .highlight_style(Style::default().fg(Color::White));
+            .block(Block::default())
+            .divider("|")
+            .padding("  ", "  ");
 
-        frame.render_widget(tabs, area);
-    }
+        let chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Length(10),
+                Constraint::Min(0),
+            ])
+            .split(area);
 
-    fn render_main_content(&self, app: &App, frame: &mut Frame, area: Rect) {
-        match app.current_tab {
-            Tab::Collections => self.render_collections(app, frame, area),
-            Tab::Workspace => frame.render_widget(&app.workspace, area),
-            Tab::Result => self.render_result(app, frame, area),
-        }
+        let title = Paragraph::new(app_info_line)
+            .style(Style::default());
+
+        frame.render_widget(title, chunks[0]);
+        frame.render_widget(tabs, chunks[1]);
     }
 
     fn render_collections(&self, app: &App, frame: &mut Frame, area: Rect) {
@@ -116,9 +123,39 @@ impl UI {
         frame.render_widget(paragraph, area);
     }
 
+    fn render_workspace(&self, app: &App, frame: &mut Frame, area: Rect, search_height: u16) {
+        let block = Block::default()
+            .title("Workspace").white().bold()
+            .borders(Borders::ALL);
+
+        let mut workspace_widget = app.workspace.clone();
+        workspace_widget.set_block(block);
+        
+        if !app.search.open {
+            frame.render_widget(&workspace_widget, area);
+            return;
+        }
+        let workspace_area = Rect::new(
+            area.x, 
+            area.y + search_height, 
+            area.width, 
+            area.height.saturating_sub(search_height)
+        );
+        
+        let search_area = Rect::new(
+            area.x,
+            area.y,
+            area.width,
+            search_height
+        );
+        
+        frame.render_widget(&app.search.textarea, search_area);
+        frame.render_widget(&workspace_widget, workspace_area);
+    }
+
     fn render_result(&self, _app: &App, frame: &mut Frame, area: Rect) {
         let block = Block::default()
-            .title("Result").white().bold()
+            .title("Results").white().bold()
             .borders(Borders::ALL);
 
         frame.render_widget(block, area);

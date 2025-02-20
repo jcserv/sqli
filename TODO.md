@@ -3,6 +3,8 @@
 - [ ] command palette and keyboard navigation
 - [ ] autocomplete based on tables within a database
 
+- [ ] allow configs to be referenced by name case insensitively
+
 ## random notes
 - collections are a group of sql files, represented by a directory
 - collections can be run against any connection
