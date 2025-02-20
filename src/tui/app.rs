@@ -382,33 +382,37 @@ impl<'a> App<'a> {
 
     fn handle_collection_selection(&mut self) -> Result<()> {
         let selected = self.collection_state.selected();
-        if !selected.is_empty() {
-            let path = selected.iter().map(|s| s.as_str()).collect::<Vec<_>>();
-            
-            if path.len() >= 2 {
-                let collection_name = path[0];
-                let file_name = path[path.len() - 1];
-                
-                if file_name.ends_with(".sql") {
-                    match crate::collection::load_sql_content(collection_name, file_name) {
-                        Ok(content) => {
-                            self.workspace.clear();
-                            self.workspace.insert_str(&content);
-                            
-                            // Switch to workspace edit mode
-                            self.focus = Focus::WorkspaceEdit;
-                            self.current_tab = Tab::Workspace;
-                            
-                            self.message = format!("Loaded {}/{}", collection_name, file_name);
-                        },
-                        Err(err) => {
-                            self.message = format!("Error loading SQL file: {}", err);
-                        }
-                    }
-                }
-            }
+        if selected.is_empty() {
+            return Ok(());
         }
-        
-        Ok(())
+
+        let path = selected.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+        if path.len() < 2 {
+            return Ok(());
+        }
+            
+        let collection_name = path[0];
+        let file_name = path[path.len() - 1];
+
+        if !file_name.ends_with(".sql") {
+            return Ok(());
+        }
+            
+        match crate::collection::load_sql_content(collection_name, file_name) {
+            Ok(content) => {
+                self.workspace.clear();
+                self.workspace.insert_str(&content);
+                
+                // Switch to workspace edit mode
+                self.focus = Focus::WorkspaceEdit;
+                self.current_tab = Tab::Workspace;
+                
+                self.message = format!("Loaded {}/{}", collection_name, file_name);
+            },
+            Err(err) => {
+                self.message = format!("Error loading SQL file: {}", err);
+            },
+        }
+        return Ok(());
     }
 }
