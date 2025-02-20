@@ -54,16 +54,25 @@ impl<'a> SearchableTextArea<'a> {
     }
 
     pub fn update_dimensions(&mut self, height: u16) {
-        if height <= self.initialized_height {
-            return;
-        }
-
         let visible_lines = (height as i32 - LINE_OFFSET) as usize;
-        
         let current_lines = self.inner.lines().len();
+        
         if visible_lines > current_lines {
             for _ in current_lines..visible_lines {
                 self.inner.insert_str("\n");
+            }
+        } else if visible_lines < current_lines && visible_lines > 0 {
+            let content = self.get_content();
+            let content_lines = content.lines().count();
+            let target_lines = visible_lines.max(content_lines);
+            
+            while self.inner.lines().len() > target_lines {
+                let last_idx = self.inner.lines().len() - 1;
+                if self.inner.lines()[last_idx].trim().is_empty() {
+                    self.inner.delete_line_by_end();
+                } else {
+                    break;
+                }
             }
         }
         

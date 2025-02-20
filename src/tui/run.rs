@@ -62,7 +62,11 @@ fn run_app(
                 }
             }
             Event::Mouse(_event) => {}
-            Event::Resize(_x, _y) => {}
+            Event::Resize(width, height) => {
+                terminal.resize(ratatui::prelude::Rect::new(0, 0, width, height))?;
+                terminal.clear()?;
+                app.update_dimensions(height);
+            }
         }
     }
 }
