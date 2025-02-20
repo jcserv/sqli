@@ -1,10 +1,10 @@
-use std::collections::HashMap;
 use anyhow::Result;
 use crossterm::event::MouseEvent;
 use crossterm::event::{KeyEvent, KeyCode, KeyModifiers};
-use tui_textarea::{TextArea, Input, Key};
 use ratatui::widgets::Block;
 use ratatui::widgets::Borders;
+use tui_textarea::{TextArea, Input, Key};
+use tui_tree_widget::{TreeItem, TreeState};
 
 use super::searchable_textarea::SearchableTextArea;
 
@@ -60,7 +60,8 @@ pub struct App<'a> {
     pub command_input: String,
     pub message: String,
     pub queries: Vec<String>,
-    pub collections: HashMap<String, Vec<String>>,
+    pub collection_state: TreeState<String>,
+    pub collection_items: Vec<TreeItem<'a, String>>,
     pub should_quit: bool,
     pub search: SearchBox<'a>,
 }
@@ -69,6 +70,17 @@ impl<'a> App<'a> {
     pub fn new() -> Self {
         let mut workspace = SearchableTextArea::default();
         workspace.init();
+
+        let collections = match crate::collection::load_collections() {
+            Ok(cols) => cols,
+            Err(err) => {
+                eprintln!("Error loading collections: {}", err);
+                Vec::new()
+            }
+        };
+        
+        let collection_items = crate::collection::build_collection_tree(&collections);
+        
         
         Self {
             mode: Mode::Normal,
@@ -78,9 +90,8 @@ impl<'a> App<'a> {
             command_input: String::new(),
             message: String::new(),
             queries: Vec::new(),
-            collections: HashMap::from([
-                ("bookDb".to_string(), vec!["getBooks.sql".to_string(), "getBook.sql".to_string()]),
-            ]),
+            collection_state: TreeState::default(),
+            collection_items,
             should_quit: false,
             search: SearchBox::default(),
         }
@@ -103,7 +114,6 @@ impl<'a> App<'a> {
         
         match mouse_event.kind {
             MouseEventKind::Down(MouseButton::Left) => {
-                // Get terminal size to calculate regions
                 let terminal_size = crossterm::terminal::size().unwrap_or((80, 24));
                 let width = terminal_size.0 as usize;
                 let height = terminal_size.1 as usize;
@@ -161,15 +171,35 @@ impl<'a> App<'a> {
             _ => {}
         }
     
-        // Then handle focus-specific key bindings
         match self.focus {
             Focus::Collections => {
-                // Handle collection-specific keys here
-                Ok(false)
+                match key_event.code {
+                    KeyCode::Enter | KeyCode::Char(' ') => {
+                        self.collection_state.toggle_selected();
+                        self.handle_collection_selection()?;
+                        Ok(false)
+                    },
+                    KeyCode::Left => {
+                        self.collection_state.key_left();
+                        Ok(false)
+                    },
+                    KeyCode::Right => {
+                        self.collection_state.key_right();
+                        Ok(false)
+                    },
+                    KeyCode::Down => {
+                        self.collection_state.key_down();
+                        Ok(false)
+                    },
+                    KeyCode::Up => {
+                        self.collection_state.key_up();
+                        Ok(false)
+                    },
+                    _ => Ok(false)
+                }
             }
             Focus::Workspace => {
                 match key_event.code {
-                    // Press Space to enter edit mode when Workspace is focused
                     KeyCode::Char(' ') | KeyCode::Enter => {
                         self.focus = Focus::WorkspaceEdit;
                         Ok(false)
@@ -196,7 +226,6 @@ impl<'a> App<'a> {
             Focus::WorkspaceEdit => {
                 match key_event.code {
                     KeyCode::Esc => {
-                        // Exit edit mode with Escape
                         self.focus = Focus::Workspace;
                         Ok(false)
                     }
@@ -209,7 +238,6 @@ impl<'a> App<'a> {
                 }
             }
             Focus::Result => {
-                // Handle result-specific keys here
                 Ok(false)
             }
         }
@@ -230,11 +258,9 @@ impl<'a> App<'a> {
                     let replacement = self.search.textarea.lines().get(1).map(|s| s.as_str()).unwrap_or("");
                     self.workspace.set_search_pattern(pattern)?;
                     if key_event.modifiers.contains(KeyModifiers::CONTROL) {
-                        // Replace all
                         let count = self.workspace.replace_all(replacement);
                         self.message = format!("Replaced {} occurrences", count);
                     } else {
-                        // Replace next
                         if self.workspace.replace_next(replacement) {
                             self.message = "Replaced occurrence".to_string();
                         } else {
@@ -242,7 +268,6 @@ impl<'a> App<'a> {
                         }
                     }
                 } else {
-                    // Search functionality
                     let pattern = self.search.textarea.lines()[0].as_str();
                     self.workspace.set_search_pattern(pattern)?;
                     if !self.workspace.search_forward(true) {
@@ -353,5 +378,40 @@ impl<'a> App<'a> {
 
     pub fn update_dimensions(&mut self, height: u16) {
         self.workspace.update_dimensions(height);
+    }
+
+    fn handle_collection_selection(&mut self) -> Result<()> {
+        let selected = self.collection_state.selected();
+        if !selected.is_empty() {
+            let path = selected.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+            
+            if path.len() >= 2 {
+                let collection_name = path[0];
+                let file_name = path[path.len() - 1];
+                
+                if file_name.ends_with(".sql") {
+                    match crate::collection::load_sql_content(collection_name, file_name) {
+                        Ok(content) => {
+                            // TODO: This doesn't work, need to implement a clear function
+                            // ... or maintain a separate buffer for each unsaved file
+
+                            self.workspace.delete_line();                         
+                            self.workspace.insert_str(&content);
+                            
+                            // Switch to workspace edit mode
+                            self.focus = Focus::WorkspaceEdit;
+                            self.current_tab = Tab::Workspace;
+                            
+                            self.message = format!("Loaded {}/{}", collection_name, file_name);
+                        },
+                        Err(err) => {
+                            self.message = format!("Error loading SQL file: {}", err);
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(())
     }
 }

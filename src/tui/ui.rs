@@ -2,9 +2,10 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style, Stylize},
     text::Line,
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation},
     Frame,
 };
+use tui_tree_widget::Tree;
 
 use super::app::{App, Focus, Mode};
 
@@ -22,7 +23,7 @@ impl UI {
         return Style::default().fg(Color::LightBlue).bold()
     }
 
-    pub fn render(&self, app: &App, frame: &mut Frame) {
+    pub fn render(&self, app: &mut App, frame: &mut Frame) {
         let search_height = if app.search.open { 3 } else { 0 };
 
         let chunks = Layout::default()
@@ -88,29 +89,37 @@ impl UI {
         frame.render_widget(title, chunks[0]);
     }
 
-    fn render_collections(&self, app: &App, frame: &mut Frame, area: Rect) {
+    fn render_collections(&self, app: &mut App, frame: &mut Frame, area: Rect) {
         let focus_style = self.get_border_style(app, Focus::Collections);
 
-        let block = Block::default()
-            .title("Collections")
-            .title_style(focus_style)
-            .borders(Borders::ALL)
-            .border_style(focus_style);
+        let tree = Tree::new(&app.collection_items)
+            .expect("all item identifiers are unique")
+            .block(
+                Block::default()
+                    .title("Collections")
+                    .title_style(focus_style)
+                    .borders(Borders::ALL)
+                    .border_style(focus_style)
+            )
+            .highlight_style(
+                Style::default()
+                    .fg(Color::Black)
+                    .bg(Color::LightBlue)
+                    .bold()
+            )
+            .highlight_symbol("➤ ")
+            .experimental_scrollbar(Some(
+                Scrollbar::new(ScrollbarOrientation::VerticalRight)
+                    .begin_symbol(None)
+                    .track_symbol(None)
+                    .end_symbol(None)
+            ));
 
-        let collections = app.collections
-            .keys()
-            .map(|k| k.as_str())
-            .collect::<Vec<_>>()
-            .join("\n");
-
-        let paragraph = Paragraph::new(collections)
-            .block(block)
-            .style(Style::default().fg(Color::LightBlue));
-
-        frame.render_widget(paragraph, area);
+        // Render the tree as a stateful widget
+        frame.render_stateful_widget(tree, area, &mut app.collection_state);
     }
 
-    fn render_workspace(&self, app: &App, frame: &mut Frame, area: Rect, search_height: u16) {
+    fn render_workspace(&self, app: &mut App, frame: &mut Frame, area: Rect, search_height: u16) {
         let workspace_focus = if app.focus == Focus::WorkspaceEdit {
             Style::default().fg(Color::LightBlue).bold()
         } else {
@@ -148,7 +157,7 @@ impl UI {
         frame.render_widget(&workspace_widget, workspace_area);
     }
 
-    fn render_result(&self, app: &App, frame: &mut Frame, area: Rect) {
+    fn render_result(&self, app: &mut App, frame: &mut Frame, area: Rect) {
         let focus_style = self.get_border_style(app, Focus::Result);
 
         let block = Block::default()
@@ -160,16 +169,20 @@ impl UI {
         frame.render_widget(block, area);
     }
 
-    fn render_instructions(&self, app: &App, frame: &mut Frame, area: Rect) {
+    fn render_instructions(&self, app: &mut App, frame: &mut Frame, area: Rect) {
         let instructions = match app.mode {
             Mode::Normal => {
                 match app.focus {
                     Focus::Collections => {
                         Line::from(vec![
-                            " Tab ".blue().bold(),
-                            "Switch Panel ".white().into(),
+                            " ↑/↓ ".blue().bold(),
+                            "Navigate ".white().into(),
+                            " ←/→ ".blue().bold(),
+                            "Collapse/Expand ".white().into(),
                             " Space ".blue().bold(),
                             "Select ".white().into(),
+                            " Tab ".blue().bold(),
+                            "Switch Panel ".white().into(),
                             " ^P ".blue().bold(),
                             "Command ".white().into(),
                             " ^C ".blue().bold(),

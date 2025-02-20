@@ -64,7 +64,6 @@ impl Executor for PostgresExecutor {
         }
         Err(err) => {
             println!("🔥 Failed to execute query: {:?}", err);
-            // Rollback on error
             tx.rollback().await?;
         }
     }

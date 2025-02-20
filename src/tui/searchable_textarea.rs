@@ -8,7 +8,7 @@ pub struct SearchableTextArea<'a> {
     inner: TextArea<'a>,
     search_pattern: String,
     last_search_pos: (usize, usize), // (line, column)
-    initialized_height: u16, // Track the last height we initialized with
+    initialized_height: u16,
 }
 
 impl<'a> Default for SearchableTextArea<'a> {
@@ -53,6 +53,27 @@ impl<'a> SearchableTextArea<'a> {
         self.set_cursor_line_style(Style::default());
     }
 
+    pub fn get_content(&self) -> String {
+        let lines = self.inner.lines();
+        let mut last_non_empty = lines.len();
+        
+        for (i, line) in lines.iter().enumerate().rev() {
+            if !line.trim().is_empty() {
+                last_non_empty = i + 1;
+                break;
+            }
+        }
+        
+        lines[..last_non_empty].join("\n")
+    }
+
+    pub fn delete_line(&mut self) {
+        let (_row, _) = self.inner.cursor();
+        self.inner.move_cursor(tui_textarea::CursorMove::Head);
+        self.inner.move_cursor(tui_textarea::CursorMove::End);
+        self.inner.delete_line_by_head();
+    }
+
     pub fn update_dimensions(&mut self, height: u16) {
         let visible_lines = (height as i32 - LINE_OFFSET) as usize;
         let current_lines = self.inner.lines().len();
@@ -78,20 +99,6 @@ impl<'a> SearchableTextArea<'a> {
         
         self.initialized_height = height;
         self.inner.move_cursor(tui_textarea::CursorMove::Top);
-    }
-
-    pub fn get_content(&self) -> String {
-        let lines = self.inner.lines();
-        let mut last_non_empty = lines.len();
-        
-        for (i, line) in lines.iter().enumerate().rev() {
-            if !line.trim().is_empty() {
-                last_non_empty = i + 1;
-                break;
-            }
-        }
-        
-        lines[..last_non_empty].join("\n")
     }
 
     pub fn set_search_pattern(&mut self, pattern: &str) -> anyhow::Result<()> {
@@ -252,12 +259,5 @@ impl<'a> SearchableTextArea<'a> {
         }
 
         count
-    }
-
-    pub fn delete_line(&mut self) {
-        let (_row, _) = self.inner.cursor();
-        self.inner.move_cursor(tui_textarea::CursorMove::Head);
-        self.inner.move_cursor(tui_textarea::CursorMove::End);
-        self.inner.delete_line_by_head();
     }
 }

@@ -1,3 +1,4 @@
+pub mod collection;
 pub mod config;
 pub mod sql;
 pub mod tui;

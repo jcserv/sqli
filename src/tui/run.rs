@@ -13,20 +13,17 @@ use super::event::{Event, EventHandler};
 use super::ui::UI;
 
 pub fn run_tui() -> Result<()> {
-    // Setup terminal
     enable_raw_mode()?;
     let mut stderr = io::stderr();
     execute!(stderr, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stderr);
     let mut terminal = Terminal::new(backend)?;
 
-    // Create app and run it
     let mut app = App::new();
     let ui = UI::new();
     let events = EventHandler::new(250); // 250ms polling rate
     let res = run_app(&mut terminal, &mut app, &events, &ui);
 
-    // Restore terminal
     disable_raw_mode()?;
     execute!(
         terminal.backend_mut(),
