@@ -74,6 +74,25 @@ impl<'a> SearchableTextArea<'a> {
         self.inner.delete_line_by_head();
     }
 
+    pub fn clear(&mut self) {
+        let height = self.initialized_height;
+        
+        self.inner = TextArea::default();
+        
+        self.set_block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Workspace")
+        );
+        self.set_line_number_style(Style::default().bg(Color::DarkGray));
+        self.set_cursor_line_style(Style::default());
+        
+        self.update_dimensions(height);
+        
+        self.search_pattern = String::new();
+        self.last_search_pos = (0, 0);
+    }
+
     pub fn update_dimensions(&mut self, height: u16) {
         let visible_lines = (height as i32 - LINE_OFFSET) as usize;
         let current_lines = self.inner.lines().len();

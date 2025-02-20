@@ -392,10 +392,7 @@ impl<'a> App<'a> {
                 if file_name.ends_with(".sql") {
                     match crate::collection::load_sql_content(collection_name, file_name) {
                         Ok(content) => {
-                            // TODO: This doesn't work, need to implement a clear function
-                            // ... or maintain a separate buffer for each unsaved file
-
-                            self.workspace.delete_line();                         
+                            self.workspace.clear();
                             self.workspace.insert_str(&content);
                             
                             // Switch to workspace edit mode
