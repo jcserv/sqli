@@ -28,7 +28,7 @@ impl UI {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(2),     
+                Constraint::Length(1),     
                 Constraint::Min(0),        
                 Constraint::Length(3),    
             ])
@@ -43,8 +43,8 @@ impl UI {
         let main_chunks = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Percentage(10),    // Collections tree
-                Constraint::Percentage(90),    // Right side
+                Constraint::Percentage(15),    // Collections tree
+                Constraint::Percentage(85),    // Right side
             ])
             .split(main_area);
 
