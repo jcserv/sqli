@@ -58,11 +58,7 @@ pub struct App<'a> {
 impl<'a> App<'a> {
     pub fn new() -> Self {
         let mut workspace = SearchableTextArea::default();
-        workspace.set_block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Workspace")
-        );
+        workspace.init();
         
         Self {
             mode: Mode::Normal,
@@ -264,10 +260,15 @@ impl<'a> App<'a> {
         Ok(())
     }
 
-    fn save_query(&mut self) {
-        if !self.workspace.lines().is_empty() {
-            self.queries.push(self.workspace.lines().join("\n"));
+    pub fn save_query(&mut self) {
+        let content = self.workspace.get_content();
+        if !content.is_empty() {
+            self.queries.push(content);
             self.message = "Query saved".to_string();
         }
+    }
+
+    pub fn update_dimensions(&mut self, height: u16) {
+        self.workspace.update_dimensions(height);
     }
 }

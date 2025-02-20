@@ -48,6 +48,9 @@ fn run_app(
     events: &EventHandler,
     ui: &UI,
 ) -> Result<()> {
+    let size = terminal.size()?;
+    app.update_dimensions(size.height);
+
     loop {
         terminal.draw(|frame| ui.render(app, frame))?;
 

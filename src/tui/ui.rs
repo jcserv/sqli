@@ -129,6 +129,8 @@ impl UI {
             Mode::Normal => {
                 if app.current_tab == Tab::Workspace {
                     Line::from(vec![
+                        " ^S ".blue().bold(),
+                        "Save ".white().into(),
                         " ^F ".blue().bold(),
                         "Find ".white().into(),
                         " ^R ".blue().bold(),

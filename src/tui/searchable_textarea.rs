@@ -1,11 +1,14 @@
-use ratatui::widgets::Widget;
+use ratatui::{style::{Color, Style}, widgets::{Block, Borders, Widget}};
 use std::ops::{Deref, DerefMut};
 use tui_textarea::TextArea;
+
+const LINE_OFFSET: i32 = 10;
 
 pub struct SearchableTextArea<'a> {
     inner: TextArea<'a>,
     search_pattern: String,
     last_search_pos: (usize, usize), // (line, column)
+    initialized_height: u16, // Track the last height we initialized with
 }
 
 impl<'a> Default for SearchableTextArea<'a> {
@@ -14,6 +17,7 @@ impl<'a> Default for SearchableTextArea<'a> {
             inner: TextArea::default(),
             search_pattern: String::new(),
             last_search_pos: (0, 0),
+            initialized_height: 0,
         }
     }
 }
@@ -39,6 +43,48 @@ impl<'a> Widget for &'a SearchableTextArea<'a> {
 }
 
 impl<'a> SearchableTextArea<'a> {
+    pub fn init(&mut self) {
+        self.set_block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Workspace")
+        );
+        self.set_line_number_style(Style::default().bg(Color::DarkGray));
+        self.set_cursor_line_style(Style::default());
+    }
+
+    pub fn update_dimensions(&mut self, height: u16) {
+        if height <= self.initialized_height {
+            return;
+        }
+
+        let visible_lines = (height as i32 - LINE_OFFSET) as usize;
+        
+        let current_lines = self.inner.lines().len();
+        if visible_lines > current_lines {
+            for _ in current_lines..visible_lines {
+                self.inner.insert_str("\n");
+            }
+        }
+        
+        self.initialized_height = height;
+        self.inner.move_cursor(tui_textarea::CursorMove::Top);
+    }
+
+    pub fn get_content(&self) -> String {
+        let lines = self.inner.lines();
+        let mut last_non_empty = lines.len();
+        
+        for (i, line) in lines.iter().enumerate().rev() {
+            if !line.trim().is_empty() {
+                last_non_empty = i + 1;
+                break;
+            }
+        }
+        
+        lines[..last_non_empty].join("\n")
+    }
+
     pub fn set_search_pattern(&mut self, pattern: &str) -> anyhow::Result<()> {
         self.search_pattern = pattern.to_string();
         self.last_search_pos = self.inner.cursor();
@@ -72,9 +118,6 @@ impl<'a> SearchableTextArea<'a> {
 
         // If we started from middle and didn't find anything, try from beginning
         if !from_start && start_line > 0 {
-            // start_line = 0;
-            // start_col = 0;
-            
             for line_idx in 0..=self.last_search_pos.0 {
                 let line = &self.inner.lines()[line_idx];
                 
