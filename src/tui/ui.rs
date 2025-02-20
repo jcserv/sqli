@@ -1,18 +1,25 @@
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style, Stylize},
-    text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Tabs},
+    text::Line,
+    widgets::{Block, Borders, Paragraph},
     Frame,
 };
 
-use super::app::{App, Mode, Tab};
+use super::app::{App, Focus, Mode};
 
 pub struct UI;
 
 impl UI {
     pub fn new() -> Self {
         Self
+    }
+
+    fn get_border_style(&self, app: &App, target_focus: Focus) -> Style {
+        if !(app.focus == target_focus) {
+            return Style::default().fg(Color::White)
+        }
+        return Style::default().fg(Color::LightBlue).bold()
     }
 
     pub fn render(&self, app: &App, frame: &mut Frame) {
@@ -61,39 +68,16 @@ impl UI {
         self.render_instructions(app, frame, status_area);
     }
 
-    fn render_app_info(&self, app: &App, frame: &mut Frame, area: Rect) {
+    fn render_app_info(&self, _app: &App, frame: &mut Frame, area: Rect) {
         let app_info_line = Line::from(vec![
             " sqli ".white().bold(),
             "v0.1.0 ".white().into(),
         ]);
 
-        let titles = vec!["Collections", "Workspace", "Result"]
-            .iter()
-            .enumerate()
-            .map(|(i, t)| {
-                let index = match i {
-                    0 => Tab::Collections,
-                    1 => Tab::Workspace,
-                    _ => Tab::Result,
-                };
-                
-                if app.current_tab == index {
-                    Span::styled(*t, Style::default().fg(Color::White))
-                } else {
-                    Span::styled(*t, Style::default().fg(Color::Gray))
-                }
-            })
-            .collect::<Vec<_>>();
-
-        let tabs = Tabs::new(titles)
-            .block(Block::default())
-            .divider("|")
-            .padding("  ", "  ");
-
         let chunks = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Length(10),
+                Constraint::Length(12),
                 Constraint::Min(0),
             ])
             .split(area);
@@ -102,13 +86,16 @@ impl UI {
             .style(Style::default());
 
         frame.render_widget(title, chunks[0]);
-        frame.render_widget(tabs, chunks[1]);
     }
 
     fn render_collections(&self, app: &App, frame: &mut Frame, area: Rect) {
+        let focus_style = self.get_border_style(app, Focus::Collections);
+
         let block = Block::default()
-            .title("Collections").white().bold()
-            .borders(Borders::ALL);
+            .title("Collections")
+            .title_style(focus_style)
+            .borders(Borders::ALL)
+            .border_style(focus_style);
 
         let collections = app.collections
             .keys()
@@ -124,9 +111,17 @@ impl UI {
     }
 
     fn render_workspace(&self, app: &App, frame: &mut Frame, area: Rect, search_height: u16) {
+        let workspace_focus = if app.focus == Focus::WorkspaceEdit {
+            Style::default().fg(Color::LightBlue).bold()
+        } else {
+            self.get_border_style(app, Focus::Workspace).not_bold()
+        };
+
         let block = Block::default()
-            .title("Workspace").white().bold()
-            .borders(Borders::ALL);
+            .title("Workspace")
+            .title_style(workspace_focus)
+            .borders(Borders::ALL)
+            .border_style(workspace_focus);
 
         let mut workspace_widget = app.workspace.clone();
         workspace_widget.set_block(block);
@@ -153,10 +148,14 @@ impl UI {
         frame.render_widget(&workspace_widget, workspace_area);
     }
 
-    fn render_result(&self, _app: &App, frame: &mut Frame, area: Rect) {
+    fn render_result(&self, app: &App, frame: &mut Frame, area: Rect) {
+        let focus_style = self.get_border_style(app, Focus::Result);
+
         let block = Block::default()
-            .title("Results").white().bold()
-            .borders(Borders::ALL);
+            .title("Results")
+            .title_style(focus_style)
+            .borders(Borders::ALL)
+            .border_style(focus_style);
 
         frame.render_widget(block, area);
     }
@@ -164,26 +163,63 @@ impl UI {
     fn render_instructions(&self, app: &App, frame: &mut Frame, area: Rect) {
         let instructions = match app.mode {
             Mode::Normal => {
-                if app.current_tab == Tab::Workspace {
-                    Line::from(vec![
-                        " ^S ".blue().bold(),
-                        "Save ".white().into(),
-                        " ^F ".blue().bold(),
-                        "Find ".white().into(),
-                        " ^R ".blue().bold(),
-                        "Replace ".white().into(),
-                        " ^P ".blue().bold(),
-                        "Command ".white().into(),
-                        " ^C ".blue().bold(),
-                        "Quit ".white().into(),
-                    ])
-                } else {
-                    Line::from(vec![
-                        " ^P ".blue().bold(),
-                        "Command ".white().into(),
-                        " ^C ".blue().bold(),
-                        "Quit ".white().into(),
-                    ])
+                match app.focus {
+                    Focus::Collections => {
+                        Line::from(vec![
+                            " Tab ".blue().bold(),
+                            "Switch Panel ".white().into(),
+                            " Space ".blue().bold(),
+                            "Select ".white().into(),
+                            " ^P ".blue().bold(),
+                            "Command ".white().into(),
+                            " ^C ".blue().bold(),
+                            "Quit ".white().into(),
+                        ])
+                    },
+                    Focus::Workspace => {
+                        Line::from(vec![
+                            " Tab ".blue().bold(),
+                            "Switch Panel ".white().into(),
+                            " Space ".blue().bold(),
+                            "Edit ".white().into(),
+                            " ^F ".blue().bold(),
+                            "Find ".white().into(),
+                            " ^R ".blue().bold(),
+                            "Replace ".white().into(),
+                            " ^P ".blue().bold(),
+                            "Command ".white().into(),
+                            " ^C ".blue().bold(),
+                            "Quit ".white().into(),
+                        ])
+                    },
+                    Focus::WorkspaceEdit => {
+                        Line::from(vec![
+                            " Esc ".blue().bold(),
+                            "Stop Editing ".white().into(),
+                            " ^S ".blue().bold(),
+                            "Save ".white().into(),
+                            " ^F ".blue().bold(),
+                            "Find ".white().into(),
+                            " ^R ".blue().bold(),
+                            "Replace ".white().into(),
+                            " ^P ".blue().bold(),
+                            "Command ".white().into(),
+                            " ^C ".blue().bold(),
+                            "Quit ".white().into(),
+                        ])
+                    },
+                    Focus::Result => {
+                        Line::from(vec![
+                            " Tab ".blue().bold(),
+                            "Switch Panel ".white().into(),
+                            " Space ".blue().bold(),
+                            "Select ".white().into(),
+                            " ^P ".blue().bold(),
+                            "Command ".white().into(),
+                            " ^C ".blue().bold(),
+                            "Quit ".white().into(),
+                        ])
+                    }
                 }
             },
             Mode::Command => Line::from(vec![
@@ -224,9 +260,11 @@ impl UI {
                 }
             }
         };
+        
         let status = Paragraph::new(instructions)
             .style(Style::default().fg(Color::LightBlue))
             .block(Block::default().borders(Borders::ALL));
+        
         frame.render_widget(status, area);
     }
 }
