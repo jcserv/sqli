@@ -28,9 +28,9 @@ or
 2. `sqli query --url postgres://user:password@host:port/database --sql "SELECT * FROM table;"` - ad-hoc query
 
 <!-- 
-1. `sqli config add --name local --url postgres://user:password@host:port/database` - add a new profile
-2. `sqli query --profile local --sql "SELECT * FROM table;"` - use a pre-configured profile
-3. `sqli query --profile local --file path/to/file.sql` - execute a sql query from a file 
+1. `sqli config add --name local --url postgres://user:password@host:port/database` - add a new connection
+2. `sqli query --conn local --sql "SELECT * FROM book;"` - use a pre-configured connection
+3. `sqli query --conn local --file path/to/file.sql` - execute a sql query from a file 
 -->
 
 ## todo 📆

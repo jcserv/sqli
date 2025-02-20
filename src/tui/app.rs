@@ -87,7 +87,6 @@ impl<'a> App<'a> {
 
     fn handle_normal_mode(&mut self, key_event: KeyEvent) -> Result<bool> {
         if self.current_tab == Tab::Workspace {
-            // Handle special workspace commands first
             match (key_event.code, key_event.modifiers) {
                 (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
                     self.should_quit = true;
@@ -118,7 +117,6 @@ impl<'a> App<'a> {
                     return Ok(false);
                 }
                 _ => {
-                    // Convert KeyEvent to tui_textarea::Input
                     let input = Input::from(key_event);
                     self.workspace.input(input);
                     return Ok(false);
@@ -126,7 +124,6 @@ impl<'a> App<'a> {
             }
         }
 
-        // Handle non-workspace tabs
         match key_event.code {
             KeyCode::Char('c') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.should_quit = true;
@@ -151,7 +148,6 @@ impl<'a> App<'a> {
             }
             Input { key: Key::Enter, .. } => {
                 if self.search.replace_mode {
-                    // Handle replace
                     let pattern = self.search.textarea.lines()[0].as_str();
                     let replacement = self.search.textarea.lines().get(1).map(|s| s.as_str()).unwrap_or("");
                     self.workspace.set_search_pattern(pattern)?;

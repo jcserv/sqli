@@ -1,0 +1,9 @@
+keybind = ctrl+p = open:command_palette
+keybind = ctrl+c = exit
+
+keybind = ctrl+s = save
+keybind = ctrl+f = find
+keybind = ctrl+r = replace
+
+theme.primaryColor = White
+theme.secondaryColor = LightBlue
