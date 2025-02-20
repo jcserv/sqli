@@ -16,6 +16,8 @@ impl UI {
     }
 
     pub fn render(&self, app: &App, frame: &mut Frame) {
+        let search_height = if app.search.open { 3 } else { 0 };
+
         let outer_padding = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
@@ -34,21 +36,26 @@ impl UI {
             ])
             .split(outer_padding[1]);
 
-        // Main content area within the padding
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(1),  // App info
-                Constraint::Length(3),  // Tabs
-                Constraint::Min(0),     // Main content
-                Constraint::Length(3),  // Status line
+                Constraint::Length(1),                // App info
+                Constraint::Length(3),                // Tabs
+                Constraint::Length(search_height),    // Search box
+                Constraint::Min(0),                   // Main content
+                Constraint::Length(3),                // Status line
             ])
             .split(vertical_padding[1]);
 
         self.render_app_info(app, frame, chunks[0]);
         self.render_tabs(app, frame, chunks[1]);
-        self.render_main_content(app, frame, chunks[2]);
-        self.render_instructions(app, frame, chunks[3]);
+        
+        if app.search.open {
+            frame.render_widget(&app.search.textarea, chunks[2]);
+        }
+        
+        self.render_main_content(app, frame, chunks[3]);
+        self.render_instructions(app, frame, chunks[4]);
     }
 
     fn render_app_info(&self, _app: &App, frame: &mut Frame, area: Rect) {
@@ -86,7 +93,7 @@ impl UI {
     fn render_main_content(&self, app: &App, frame: &mut Frame, area: Rect) {
         match app.current_tab {
             Tab::Collections => self.render_collections(app, frame, area),
-            Tab::Workspace => self.render_workspace(app, frame, area),
+            Tab::Workspace => frame.render_widget(&app.workspace, area),
             Tab::Result => self.render_result(app, frame, area),
         }
     }
@@ -109,18 +116,6 @@ impl UI {
         frame.render_widget(paragraph, area);
     }
 
-    fn render_workspace(&self, app: &App, frame: &mut Frame, area: Rect) {
-        let block = Block::default()
-            .title("Workspace").white().bold()
-            .borders(Borders::ALL);
-
-        let paragraph = Paragraph::new(app.query.clone())
-            .block(block)
-            .style(Style::default().fg(Color::LightBlue));
-
-        frame.render_widget(paragraph, area);
-    }
-
     fn render_result(&self, _app: &App, frame: &mut Frame, area: Rect) {
         let block = Block::default()
             .title("Result").white().bold()
@@ -130,37 +125,69 @@ impl UI {
     }
 
     fn render_instructions(&self, app: &App, frame: &mut Frame, area: Rect) {
-        let instructions = Line::from(vec![
-            " ^c ".blue().bold(),
-            "Quit ".white().into(),
-        ]);
-
-        let mode = format!(
-            "Mode: {}",
-            match app.mode {
-                Mode::Normal => "Normal",
-                Mode::Command => "Command",
+        let instructions = match app.mode {
+            Mode::Normal => {
+                if app.current_tab == Tab::Workspace {
+                    Line::from(vec![
+                        " ^F ".blue().bold(),
+                        "Find ".white().into(),
+                        " ^R ".blue().bold(),
+                        "Replace ".white().into(),
+                        " ^P ".blue().bold(),
+                        "Command ".white().into(),
+                        " ^C ".blue().bold(),
+                        "Quit ".white().into(),
+                    ])
+                } else {
+                    Line::from(vec![
+                        " ^P ".blue().bold(),
+                        "Command ".white().into(),
+                        " ^C ".blue().bold(),
+                        "Quit ".white().into(),
+                    ])
+                }
+            },
+            Mode::Command => Line::from(vec![
+                " ESC ".blue().bold(),
+                "Normal ".white().into(),
+                " Enter ".blue().bold(),
+                "Execute ".white().into(),
+                " ^C ".blue().bold(),
+                "Quit ".white().into(),
+            ]),
+            Mode::Search => {
+                if app.search.replace_mode {
+                    Line::from(vec![
+                        " ESC ".blue().bold(),
+                        "Cancel ".white().into(),
+                        " Enter ".blue().bold(),
+                        "Replace ".white().into(),
+                        " ^N ".blue().bold(),
+                        "Next ".white().into(),
+                        " ^P ".blue().bold(),
+                        "Previous ".white().into(),
+                        " ^C ".blue().bold(),
+                        "Quit ".white().into(),
+                    ])
+                } else {
+                    Line::from(vec![
+                        " ESC ".blue().bold(),
+                        "Cancel ".white().into(),
+                        " Enter ".blue().bold(),
+                        "Find ".white().into(),
+                        " ^N ".blue().bold(),
+                        "Next ".white().into(),
+                        " ^P ".blue().bold(),
+                        "Previous ".white().into(),
+                        " ^C ".blue().bold(),
+                        "Quit ".white().into(),
+                    ])
+                }
             }
-        );
-
-        let status = Paragraph::new(mode)
+        };
+        let status = Paragraph::new(instructions)
             .style(Style::default().fg(Color::LightBlue))
-            .block(Block::default().borders(Borders::ALL).title_bottom(instructions.centered()));
-
+            .block(Block::default().borders(Borders::ALL));
         frame.render_widget(status, area);
     }
-
-    // fn center_horizontal(&self, area: Rect, width: u16) -> Rect {
-    //     let [area] = Layout::horizontal([Constraint::Length(width)])
-    //         .flex(Flex::Center)
-    //         .areas(area);
-    //     area
-    // }
-
-    // fn center_vertical(&self, area: Rect, height: u16) -> Rect {
-    //     let [area] = Layout::vertical([Constraint::Length(height)])
-    //         .flex(Flex::Center)
-    //         .areas(area);
-    //     area
-    // }
 }
