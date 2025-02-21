@@ -23,9 +23,9 @@ impl WorkspacePane {
 
     pub fn render(&self, app: &mut App, frame: &mut Frame, area: Rect, search_height: u16) {
         let workspace_focus = if app.focus == Focus::WorkspaceEdit {
-            Style::default().fg(Color::LightBlue) //.bold()
+            Style::default().fg(Color::LightBlue).bold()
         } else if app.focus == Focus::Workspace {
-            Style::default().fg(Color::LightBlue)// .bold()
+            Style::default().fg(Color::LightBlue)
         } else {
             Style::default().fg(Color::White)
         };

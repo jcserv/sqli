@@ -21,8 +21,10 @@ impl CollectionsPane {
     }
 
     pub fn render(&self, app: &mut App, frame: &mut Frame, area: Rect) {
-        let focus_style = if app.focus == Focus::Collections {
-            Style::default().fg(Color::LightBlue)// .bold()
+        let focus_style = if app.focus == Focus::CollectionsEdit {
+            Style::default().fg(Color::LightBlue).bold()
+        } else if app.focus == Focus::Collections {
+            Style::default().fg(Color::LightBlue)
         } else {
             Style::default().fg(Color::White)
         };
@@ -40,7 +42,7 @@ impl CollectionsPane {
                 Style::default()
                     .fg(Color::Black)
                     .bg(Color::LightBlue)
-                    // .bold()
+                    .bold()
             )
             .highlight_symbol("➤ ")
             .experimental_scrollbar(Some(
@@ -104,20 +106,35 @@ impl Instructions for CollectionsPane {
     fn get_instructions(&self, app: &App) -> Line {
         match app.mode {
             Mode::Normal => {
-                Line::from(vec![
-                    " ↑/↓ ".blue().bold(),
-                    "Navigate ".white().into(),
-                    " ←/→ ".blue().bold(),
-                    "Collapse/Expand ".white().into(),
-                    " Space ".blue().bold(),
-                    "Select ".white().into(),
-                    " Tab ".blue().bold(),
-                    "Switch Panel ".white().into(),
-                    " ^P ".blue().bold(),
-                    "Command ".white().into(),
-                    " ^C ".blue().bold(),
-                    "Quit ".white().into(),
-                ])
+                match app.focus {
+                    Focus::Collections => {
+                        Line::from(vec![
+                            " Tab ".blue().bold(),
+                            "Switch Panel ".white().into(),
+                            " Space ".blue().bold(),
+                            "Select ".white().into(),
+                            " ^P ".blue().bold(),
+                            "Command ".white().into(),
+                            " ^C ".blue().bold(),
+                            "Quit ".white().into(),
+                        ])
+                    },
+                    Focus::CollectionsEdit => {
+                        Line::from(vec![
+                            " Esc ".blue().bold(),
+                            "Stop Editing ".white().into(),
+                            " ↑/↓ ".blue().bold(),
+                            "Navigate ".white().into(),
+                            " ←/→ ".blue().bold(),
+                            "Collapse/Expand ".white().into(),
+                            " ^P ".blue().bold(),
+                            "Command ".white().into(),
+                            " ^C ".blue().bold(),
+                            "Quit ".white().into(),
+                        ])
+                    },
+                    _ => Line::from(""),
+                }
             },
             _ => Line::from(""),
         }
@@ -126,38 +143,55 @@ impl Instructions for CollectionsPane {
 
 impl PaneEventHandler for CollectionsPane {
     fn handle_key_event(&self, app: &mut App, key_event: KeyEvent) -> Result<bool> {
-        if app.focus != Focus::Collections || app.mode != Mode::Normal {
+        if app.mode != Mode::Normal {
             return Ok(false);
         }
         
-        match key_event.code {
-            KeyCode::Enter | KeyCode::Char(' ') => {
-                app.collection_state.toggle_selected();
-                self.handle_selection(app)?;
-                Ok(false)
+        match app.focus {
+            Focus::Collections => {
+                match key_event.code {
+                    KeyCode::Enter | KeyCode::Char(' ') => {
+                        app.focus = Focus::CollectionsEdit;
+                        Ok(false)
+                    },
+                    _ => Ok(false)
+                }
             },
-            KeyCode::Left => {
-                app.collection_state.key_left();
-                Ok(false)
-            },
-            KeyCode::Right => {
-                app.collection_state.key_right();
-                Ok(false)
-            },
-            KeyCode::Down => {
-                app.collection_state.key_down();
-                Ok(false)
-            },
-            KeyCode::Up => {
-                app.collection_state.key_up();
-                Ok(false)
+            Focus::CollectionsEdit => {
+                match key_event.code {
+                    KeyCode::Esc => {
+                        app.focus = Focus::Collections;
+                        Ok(false)
+                    },
+                    KeyCode::Enter | KeyCode::Char(' ') => {
+                        app.collection_state.toggle_selected();
+                        self.handle_selection(app)?;
+                        Ok(false)
+                    },
+                    KeyCode::Left => {
+                        app.collection_state.key_left();
+                        Ok(false)
+                    },
+                    KeyCode::Right => {
+                        app.collection_state.key_right();
+                        Ok(false)
+                    },
+                    KeyCode::Down => {
+                        app.collection_state.key_down();
+                        Ok(false)
+                    },
+                    KeyCode::Up => {
+                        app.collection_state.key_up();
+                        Ok(false)
+                    },
+                    _ => Ok(false)
+                }
             },
             _ => Ok(false)
         }
     }
     
     fn handle_mouse_event(&self, _app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
-        // Implement mouse handling for collections pane
         Ok(false)
     }
 }

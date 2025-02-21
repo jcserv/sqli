@@ -23,7 +23,7 @@ impl ResultsPane {
 
     pub fn render(&self, app: &mut App, frame: &mut Frame, area: Rect) {
         let focus_style = if app.focus == Focus::Result {
-            Style::default().fg(Color::LightBlue)// .bold()
+            Style::default().fg(Color::LightBlue)
         } else {
             Style::default().fg(Color::White)
         };

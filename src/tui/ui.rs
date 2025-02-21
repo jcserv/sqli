@@ -101,7 +101,7 @@ impl UI {
         let instructions = match app.mode {
             Mode::Normal => {
                 match app.focus {
-                    Focus::Collections => self.collections_pane.get_instructions(app),
+                    Focus::Collections | Focus::CollectionsEdit => self.collections_pane.get_instructions(app),
                     Focus::Workspace | Focus::WorkspaceEdit => self.workspace_pane.get_instructions(app),
                     Focus::Result => self.results_pane.get_instructions(app),
                 }
@@ -143,7 +143,7 @@ impl UI {
         }
         
         match app.focus {
-            Focus::Collections => self.collections_pane.handle_key_event(app, key_event),
+            Focus::Collections | Focus::CollectionsEdit => self.collections_pane.handle_key_event(app, key_event),
             Focus::Workspace | Focus::WorkspaceEdit => self.workspace_pane.handle_key_event(app, key_event),
             Focus::Result => self.results_pane.handle_key_event(app, key_event),
         }
@@ -164,6 +164,10 @@ impl UI {
                 if x < width * 15 / 100 {
                     // Left panel - Collections
                     app.select_tab(super::app::Tab::Collections);
+                    
+                    if app.focus == Focus::Collections {
+                        app.focus = Focus::CollectionsEdit;
+                    }
                 } else {
                     let content_height = height - 5;
                     if y < 1 + (content_height * 70 / 100) {
@@ -180,7 +184,7 @@ impl UI {
                 }
                 
                 match app.focus {
-                    Focus::Collections => return self.collections_pane.handle_mouse_event(app, mouse_event),
+                    Focus::Collections | Focus::CollectionsEdit => return self.collections_pane.handle_mouse_event(app, mouse_event),
                     Focus::Workspace | Focus::WorkspaceEdit => return self.workspace_pane.handle_mouse_event(app, mouse_event),
                     Focus::Result => return self.results_pane.handle_mouse_event(app, mouse_event),
                 }
@@ -189,7 +193,7 @@ impl UI {
         
         // If not handled by focus selection, delegate based on current focus
         match app.focus {
-            Focus::Collections => self.collections_pane.handle_mouse_event(app, mouse_event),
+            Focus::Collections | Focus::CollectionsEdit => self.collections_pane.handle_mouse_event(app, mouse_event),
             Focus::Workspace | Focus::WorkspaceEdit => self.workspace_pane.handle_mouse_event(app, mouse_event),
             Focus::Result => self.results_pane.handle_mouse_event(app, mouse_event),
         }
