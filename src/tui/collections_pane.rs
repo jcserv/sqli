@@ -44,7 +44,6 @@ impl CollectionsPane {
                     .bg(Color::LightBlue)
                     .bold()
             )
-            .highlight_symbol("➤ ")
             .experimental_scrollbar(Some(
                 Scrollbar::new(ScrollbarOrientation::VerticalRight)
                     .begin_symbol(None)
@@ -125,7 +124,7 @@ impl Instructions for CollectionsPane {
                             "Stop Editing ".white().into(),
                             " ↑/↓ ".blue().bold(),
                             "Navigate ".white().into(),
-                            " ←/→ ".blue().bold(),
+                            " Enter ".blue().bold(),
                             "Collapse/Expand ".white().into(),
                             " ^P ".blue().bold(),
                             "Command ".white().into(),
@@ -192,11 +191,18 @@ impl PaneEventHandler for CollectionsPane {
     }
     
     fn handle_mouse_event(&self, app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
-        app.select_tab(super::app::Tab::Collections);
+        if app.current_tab != super::app::Tab::Collections {
+            app.select_tab(super::app::Tab::Collections);
+        }
+        
         
         if app.focus == Focus::Collections {
             app.focus = Focus::CollectionsEdit;
-        }        
+        } else {
+            app.collection_state.toggle_selected();
+            self.handle_selection(app)?;
+        }
+        
         Ok(false)
     }
 }

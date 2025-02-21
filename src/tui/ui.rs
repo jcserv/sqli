@@ -129,7 +129,7 @@ impl UI {
         match (key_event.code, key_event.modifiers) {
             (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
                 app.should_quit = true;
-                return Ok(false);
+                return Ok(true);
             }
             (KeyCode::Tab, _) if app.focus != Focus::WorkspaceEdit => {
                 app.cycle_tab();
