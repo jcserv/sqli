@@ -4,7 +4,9 @@ use ratatui::{
     layout::Rect, prelude::*, style::{Color, Style}, text::Line, widgets::{Block, Borders}, Frame
 };
 
-use crate::tui::{app::{App, Focus, Mode, Tab}, traits::{Instructions, PaneEventHandler}};
+use crate::tui::app::{App, Focus, Mode, Tab};
+
+use super::traits::{Instructions, PaneEventHandler};
 
 pub struct ResultsPane;
 

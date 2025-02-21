@@ -12,7 +12,7 @@ use tui_tree_widget::Tree;
 
 use crate::collection::{build_collection_tree, load_collections, load_sql_content};
 use crate::tui::app::{App, Focus, Mode, Tab};
-use crate::tui::traits::{Instructions, PaneEventHandler};
+use super::traits::{Instructions, PaneEventHandler};
 
 pub struct CollectionsPane;
 

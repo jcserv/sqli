@@ -6,8 +6,8 @@ use ratatui::widgets::Borders;
 use tui_textarea::{TextArea, Input, Key};
 use tui_tree_widget::{TreeItem, TreeState};
 
-use super::searchable_textarea::SearchableTextArea;
 use super::ui::UI;
+use super::widgets::searchable_textarea::SearchableTextArea;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Mode {

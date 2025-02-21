@@ -2,7 +2,7 @@ use crossterm::event::{KeyEvent, MouseEvent};
 use ratatui::text::Line;
 use anyhow::Result;
 
-use super::app::App;
+use crate::tui::app::App;
 
 pub trait Instructions {
     fn get_instructions(&self, app: &App) -> Line;

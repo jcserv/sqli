@@ -9,7 +9,8 @@ use ratatui::{
     Frame,
 };
 
-use crate::tui::{app::{App, Focus, Mode, Tab}, traits::{Instructions, PaneEventHandler}};
+use crate::tui::app::{App, Focus, Mode, Tab};
+use super::traits::{Instructions, PaneEventHandler};
 
 pub struct WorkspacePane;
 
