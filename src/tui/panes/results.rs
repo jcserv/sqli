@@ -55,7 +55,6 @@ impl Instructions for ResultsPane {
 
 impl PaneEventHandler for ResultsPane {
     fn handle_key_event(&self, _app: &mut App, _key_event: KeyEvent) -> Result<bool> {
-        // TODO
         Ok(false)
     }
     

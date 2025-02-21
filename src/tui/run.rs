@@ -20,9 +20,9 @@ pub fn run_tui() -> Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     let mut app = App::new();
-    let ui = UI::new();
-    let events = EventHandler::new(250); // 250ms polling rate
-    let res = run_app(&mut terminal, &mut app, &events, &ui);
+    let mut ui = UI::new();
+    let events = EventHandler::new(250);
+    let res = run_app(&mut terminal, &mut app, &events, &mut ui);
 
     disable_raw_mode()?;
     execute!(
@@ -43,7 +43,7 @@ fn run_app(
     terminal: &mut Terminal<CrosstermBackend<io::Stderr>>,
     app: &mut App,
     events: &EventHandler,
-    ui: &UI,
+    ui: &mut UI,
 ) -> Result<()> {
     let size = terminal.size()?;
     ui.update_dimensions(app, size.height);

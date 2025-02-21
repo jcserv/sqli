@@ -31,7 +31,7 @@ impl UI {
         self.workspace_pane.update_dimensions(app, height);
     }
 
-    pub fn render(&self, app: &mut App, frame: &mut Frame) {
+    pub fn render(&mut self, app: &mut App, frame: &mut Frame) {
         let search_height = if app.search.open { 3 } else { 0 };
 
         let chunks = Layout::default()

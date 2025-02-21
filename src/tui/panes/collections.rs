@@ -8,20 +8,25 @@ use ratatui::{
     text::Line, 
     widgets::{Block, Borders, Scrollbar, ScrollbarOrientation},
 };
-use tui_tree_widget::Tree;
 
-use crate::collection::{build_collection_tree, load_collections, load_sql_content};
+use crate::{collection::{build_collection_tree, load_collections, load_sql_content}, tui::widgets::file_tree::FileTree};
 use crate::tui::app::{App, Focus, Mode, Tab};
 use super::traits::{Instructions, PaneEventHandler};
 
-pub struct CollectionsPane;
+pub struct CollectionsPane {
+    last_area: Option<Rect>,
+}
 
 impl CollectionsPane {
     pub fn new() -> Self {
-        Self
+        Self {
+            last_area: None,
+        }
     }
 
-    pub fn render(&self, app: &mut App, frame: &mut Frame, area: Rect) {
+    pub fn render(&mut self, app: &mut App, frame: &mut Frame, area: Rect) {
+        self.last_area = Some(area);
+
         let focus_style = if app.focus == Focus::CollectionsEdit {
             Style::default().fg(Color::LightBlue).bold()
         } else if app.focus == Focus::Collections {
@@ -30,7 +35,7 @@ impl CollectionsPane {
             Style::default().fg(Color::White)
         };
 
-        let tree = Tree::new(&app.collection_items)
+        let tree = FileTree::new(&app.collection_items)
             .expect("all item identifiers are unique")
             .block(
                 Block::default()
@@ -51,6 +56,7 @@ impl CollectionsPane {
                     .track_symbol(None)
                     .end_symbol(None)
             ));
+
 
         frame.render_stateful_widget(tree, area, &mut app.collection_state);
     }
@@ -118,7 +124,7 @@ impl Instructions for CollectionsPane {
                     Focus::CollectionsEdit => {
                         Line::from(vec![
                             " Esc ".blue().bold(),
-                            "Stop Editing ".white().into(),
+                            "Deselect ".white().into(),
                             " ↑/↓ ".blue().bold(),
                             "Navigate ".white().into(),
                             " Enter ".blue().bold(),
@@ -187,16 +193,21 @@ impl PaneEventHandler for CollectionsPane {
         }
     }
     
-    fn handle_mouse_event(&self, app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
+    fn handle_mouse_event(&self, app: &mut App, mouse_event: MouseEvent) -> Result<bool> {
         if app.current_tab != Tab::Collections {
             app.select_tab(Tab::Collections);
         }
-        
+
         if app.focus == Focus::Collections {
             app.focus = Focus::CollectionsEdit;
-        } else {
-            app.collection_state.toggle_selected();
-            self.handle_selection(app)?;
+        }
+
+        if let Some(area) = self.last_area {
+            let tree = FileTree::new(&app.collection_items).expect("all item identifiers are unique");
+            if tree.handle_mouse_event(&mut app.collection_state, mouse_event, area)? {
+                self.handle_selection(app)?;
+                return Ok(false);
+            }
         }
         
         Ok(false)

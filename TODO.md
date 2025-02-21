@@ -2,7 +2,7 @@
 
 ## tui
 - [ ] collections
-  - [ ] allow clicking to select items in tree 
+  - [X] allow clicking to select items in tree 
 - [ ] execute query - button & keybind
 - [ ] creating a sql file
 - [ ] view database schema
@@ -39,6 +39,7 @@ widgets:
 - [ ] allow configs to be referenced by name case insensitively
 - [ ] display user-provided name for sql file
 - [ ] query history
+- [ ] click to move cursor in workspace
 
 ## random notes
 - collections are a group of sql files, represented by a directory

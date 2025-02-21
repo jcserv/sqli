@@ -12,7 +12,6 @@ pub struct Collection {
 pub fn load_collections() -> Result<Vec<Collection>> {
     let mut collections = Vec::new();
     
-    // Check user-level collections first (~/.config/sqli/collections)
     if let Some(config_dir) = dirs::config_dir() {
         let user_collections_dir = config_dir.join("sqli").join("collections");
         if user_collections_dir.exists() {
@@ -20,7 +19,6 @@ pub fn load_collections() -> Result<Vec<Collection>> {
         }
     }
     
-    // Then check local collections (./sqli)
     let local_collections_dir = PathBuf::from("./sqli");
     if local_collections_dir.exists() {
         load_collections_from_dir(&local_collections_dir, &mut collections)?;
