@@ -1,11 +1,16 @@
 # sqli
 
-sqli is a command-line interface sql client that allows you to connect to a database and run queries.
+sqli is a sleek SQL client, used as a terminal UI or as a command line tool, to help you query your databases!
+
+inspired by tools like [curl](https://github.com/curl/curl), [posting](https://github.com/darrenburns/posting), and [bruno](https://github.com/usebruno/bruno).
 
 ## features 🚀
 
-- simple syntax for ad-hoc queries
-- written in rust btw 😎 🦀 
+- 🧪 simple syntax for ad-hoc queries 
+- 📁 collections are stored in your local file system
+  - repo-level collections are stored in `./sqli` - add these to your source control to share with others!
+  - user-level settings & collections are stored in `<CONFIG_DIR>/sqli/collections`
+- 🦀 written in rust btw 😎  
 
 ## installation 📦
 
@@ -19,25 +24,20 @@ or
 
 ## usage ⚙️ 
 
-### ui 🖥️
+### tui 🖥️
 
 1. `sqli` - open the TUI
 
 ### cli ▶️
 
-2. `sqli query --url postgres://user:password@host:port/database --sql "SELECT * FROM table;"` - ad-hoc query
+1. ad-hoc queries: `sqli query --url postgres://user:password@host:port/database --sql "SELECT * FROM table;"`
+2. configure a connection: `sqli config add --name local --url postgres://user:password@host:port/database`
 
 <!-- 
 1. `sqli config add --name local --url postgres://user:password@host:port/database` - add a new connection
 2. `sqli query --conn local --sql "SELECT * FROM book;"` - use a pre-configured connection
 3. `sqli query --conn local --file path/to/file.sql` - execute a sql query from a file 
 -->
-
-## todo 📆
-- collections
-  - user/repo-level collections are stored in file system - add these to your source control to share with others! 
-- command palette and keyboard navigation
-- autocomplete based on tables within a database
 
 ## references 📚
 

@@ -87,10 +87,6 @@ impl CollectionsPane {
                 app.workspace.clear();
                 app.workspace.insert_str(&content);
                 
-                // Switch to workspace edit mode
-                app.focus = Focus::WorkspaceEdit;
-                app.current_tab = super::app::Tab::Workspace;
-                
                 app.message = format!("Loaded {}/{}", collection_name, file_name);
             },
             Err(err) => {
@@ -194,7 +190,6 @@ impl PaneEventHandler for CollectionsPane {
         if app.current_tab != super::app::Tab::Collections {
             app.select_tab(super::app::Tab::Collections);
         }
-        
         
         if app.focus == Focus::Collections {
             app.focus = Focus::CollectionsEdit;

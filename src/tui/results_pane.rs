@@ -1,12 +1,7 @@
 use anyhow::Result;
 use crossterm::event::{KeyEvent, MouseEvent};
 use ratatui::{
-    prelude::*,
-    layout::Rect,
-    style::{Color, Style},
-    widgets::{Block, Borders},
-    text::Line,
-    Frame,
+    layout::Rect, prelude::*, style::{Color, Style}, text::Line, widgets::{Block, Borders}, Frame
 };
 
 use super::{
@@ -29,7 +24,7 @@ impl ResultsPane {
         };
 
         let block = Block::default()
-            .title("Results")
+            .title_top("Results").title_alignment(Alignment::Left)
             .title_style(focus_style)
             .borders(Borders::ALL)
             .border_style(focus_style);
