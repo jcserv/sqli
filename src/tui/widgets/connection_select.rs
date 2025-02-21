@@ -2,6 +2,8 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKi
 use ratatui::{
     layout::Rect,
     style::{Color, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, Clear, Paragraph, Widget},
     Frame,
 };
 
@@ -26,6 +28,8 @@ pub struct ConnectionSelector<'a> {
     // Store positions for event handling
     dropdown_area: Option<Rect>,
     button_area: Option<Rect>,
+    focus_style: Style,
+    is_open: bool,
 }
 
 impl<'a> ConnectionSelector<'a> {
@@ -48,7 +52,13 @@ impl<'a> ConnectionSelector<'a> {
             button_state: ButtonState::Normal,
             dropdown_area: None,
             button_area: None,
+            focus_style: Style::default(),
+            is_open: false,
         }
+    }
+
+    pub fn set_focus_style(&mut self, style: Style) {
+        self.focus_style = style;
     }
 
     fn load_connection_names() -> Vec<String> {
@@ -67,22 +77,65 @@ impl<'a> ConnectionSelector<'a> {
         self.dropdown_area = Some(selector_area);
         self.button_area = Some(button_area);
     
-        let options_ref: Vec<&str> = self.connection_names.iter()
-            .map(|s| s.as_str())
-            .collect();
-    
-        let select = Select::new(options_ref)
-            .title("Connection")
+        let dropdown_display = {
+            let selected_text = self.connection_names.get(self.selected_index)
+                .cloned()
+                .unwrap_or_default();
+            
+            let dropdown_indicator = if self.focus == SelectorFocus::Dropdown { " ▼" } else { " ▼" };
+            
+            Line::from(vec![
+                Span::raw(selected_text),
+                Span::styled(dropdown_indicator, self.focus_style),
+            ])
+        };
+        
+        frame.render_widget(Paragraph::new(dropdown_display), selector_area);        
+        if self.focus == SelectorFocus::Dropdown && self.is_open {
+            let dropdown_height = self.connection_names.len().min(5) as u16;
+            let dropdown_area = Rect::new(
+                selector_area.x,
+                selector_area.y + 1,
+                selector_area.width,
+                dropdown_height,
+            );
+            
+            Clear.render(dropdown_area, frame.buffer_mut());
+            
+            let dropdown_block = Block::default()
+                .borders(Borders::ALL)
+                .border_style(self.focus_style);            
+            let dropdown_block_inner = dropdown_block.clone();
+            dropdown_block.render(dropdown_area, frame.buffer_mut());
+            let inner_dropdown = dropdown_block_inner.inner(dropdown_area);
+        
+            for (i, option) in self.connection_names.iter().enumerate().take(5) {
+                let option_style = if i == self.selected_index {
+                    Style::default().fg(Color::Black).bg(Color::LightBlue)
+                } else {
+                    Style::default()
+                };
+                
+                let text = Line::from(option.as_str());
+                frame.buffer_mut().set_style(
+                    Rect::new(inner_dropdown.x, inner_dropdown.y + i as u16, inner_dropdown.width, 1),
+                    option_style,
+                );
+                frame.buffer_mut().set_line(
+                    inner_dropdown.x,
+                    inner_dropdown.y + i as u16,
+                    &text,
+                    inner_dropdown.width,
+                );
+            }
+        }
+        
+        let button = Button::new("Run")
             .normal_style(Style::default())
-            .focused_style(Style::default().fg(Color::LightBlue));
-    
-        let button = Button::new("Run Query")
-            .normal_style(Style::default())
-            .focused_style(Style::default().fg(Color::LightBlue))
+            .focused_style(self.focus_style)
             .pressed_style(Style::default().fg(Color::Black).bg(Color::LightBlue))
             .state(self.button_state);
-    
-        frame.render_widget(select, selector_area);        
+        
         frame.render_widget(button, button_area);
     }
 
@@ -101,33 +154,43 @@ impl<'a> ConnectionSelector<'a> {
                 self.button_state = ButtonState::Pressed;
                 return true;
             },
+            KeyCode::Enter if self.focus == SelectorFocus::Dropdown => {
+                self.toggle_dropdown();
+                return true;
+            },
             _ => {
                 match self.focus {
                     SelectorFocus::Dropdown => {
-                        let options_ref: Vec<&str> = self.connection_names.iter()
-                            .map(|s| s.as_str())
-                            .collect();
-                            
-                        let mut select = Select::new(options_ref)
-                            .title("Connection")
-                            .normal_style(Style::default())
-                            .focused_style(Style::default().fg(Color::LightBlue));
-                            
-                        select.set_selected(self.selected_index);
-                        
-                        if select.handle_key_event(key_event, true) {
-                            self.selected_index = select.selected();
-                            return true;
+                        match key_event.code {
+                            KeyCode::Down | KeyCode::Char('j') => {
+                                if !self.connection_names.is_empty() {
+                                    self.selected_index = (self.selected_index + 1) % self.connection_names.len();
+                                }
+                                return true;
+                            },
+                            KeyCode::Up | KeyCode::Char('k') => {
+                                if !self.connection_names.is_empty() {
+                                    self.selected_index = if self.selected_index > 0 {
+                                        self.selected_index - 1
+                                    } else {
+                                        self.connection_names.len() - 1
+                                    };
+                                }
+                                return true;
+                            },
+                            _ => {},
                         }
                     },
                     SelectorFocus::Button => {
-                        let mut button = self.run_button.clone();
-                        if button.handle_key_event(key_event, true) {
-                            self.button_state = ButtonState::Pressed;
-                            return true;
+                        match key_event.code {
+                            KeyCode::Enter | KeyCode::Char(' ') => {
+                                self.button_state = ButtonState::Pressed;
+                                return true;
+                            },
+                            _ => {},
                         }
                     },
-                    SelectorFocus::None => (),
+                    SelectorFocus::None => {},
                 }
             }
         }
@@ -147,18 +210,8 @@ impl<'a> ConnectionSelector<'a> {
                        mouse_y < selector_area.y + selector_area.height {
                         
                         self.focus = SelectorFocus::Dropdown;
-                        
-                        let options_ref: Vec<&str> = self.connection_names.iter()
-                            .map(|s| s.as_str())
-                            .collect();
-                        
-                        let mut select = Select::new(options_ref);
-                        select.set_selected(self.selected_index);
-                        
-                        if select.handle_mouse_event(mouse_event, selector_area) {
-                            self.selected_index = select.selected();
-                            return true;
-                        }
+                        self.toggle_dropdown();
+                        return true;
                     }
                     
                     else if mouse_x >= button_area.x && 
@@ -220,5 +273,9 @@ impl<'a> ConnectionSelector<'a> {
     pub fn update_connections(&mut self, connections: Vec<String>) {
         self.connection_names = connections;
         self.selected_index = 0; // Reset selection when connections change
+    }
+    
+    fn toggle_dropdown(&mut self) {
+        self.is_open = !self.is_open;
     }
 }

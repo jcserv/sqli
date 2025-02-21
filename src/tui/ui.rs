@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Ok, Result};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect}, prelude::*, text::Line, widgets::{Block, Borders, Paragraph}, Frame
@@ -42,9 +42,9 @@ impl UI {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(3),     
-                Constraint::Min(0),        
-                Constraint::Length(3),    
+                Constraint::Length(3),     // Header area - fixed height
+                Constraint::Min(0),        // Main content area
+                Constraint::Length(3),     // Status bar - fixed height
             ])
             .split(frame.area());
 
@@ -65,6 +65,7 @@ impl UI {
         let left_panel = main_chunks[0];
         let right_panel = main_chunks[1];
 
+        // Split right panel into workspace and results
         let right_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -76,9 +77,12 @@ impl UI {
         let workspace_area = right_chunks[0];
         let results_area = right_chunks[1];
 
+        // Render panes
         self.collections_pane.render(app, frame, left_panel);
         self.workspace_pane.render(app, frame, workspace_area, search_height);
         self.results_pane.render(app, frame, results_area);
+        
+        // Render instructions
         self.render_instructions(app, frame, status_area);
     }
 
@@ -154,12 +158,10 @@ impl UI {
                 return Ok(false); // Status bar doesn't handle events
             }
             
-            // Main content area
             let content_height = height - 6; // Excluding header and status bar
             let x = mouse_event.column as usize;
             let width = terminal_size.0 as usize;
             
-            // Content panes
             if x < width * 20 / 100 {
                 return self.collections_pane.handle_mouse_event(app, mouse_event);
             } else if y < 3 + (content_height * 70 / 100) {
@@ -168,7 +170,6 @@ impl UI {
                 return self.results_pane.handle_mouse_event(app, mouse_event);
             }
         }
-
         Ok(false)
     }
 }

@@ -84,7 +84,6 @@ impl<'a> Button<'a> {
                 }
             }
             MouseEventKind::Up(MouseButton::Left) => {
-                // Reset the pressed state
                 if self.state == ButtonState::Pressed {
                     self.state = ButtonState::Focused;
                     return true;
@@ -124,49 +123,13 @@ impl<'a> Widget for Button<'a> {
             ButtonState::Pressed => self.pressed_style,
         };
 
-        // Fill background
         buf.set_style(area, style);
 
-        // Add a simple 3D effect
-        if area.height > 2 {
-            // Top border (lighter for normal/focused, darker for pressed)
-            let top_style = if self.state == ButtonState::Pressed {
-                style.fg(Color::Rgb(32, 32, 32))
-            } else {
-                style.fg(Color::Rgb(220, 220, 220))
-            };
-            
-            buf.set_string(
-                area.x,
-                area.y,
-                "▔".repeat(area.width as usize),
-                top_style,
-            );
-        }
-
-        if area.height > 1 {
-            // Bottom border (darker for normal/focused, lighter for pressed)
-            let bottom_style = if self.state == ButtonState::Pressed {
-                style.fg(Color::Rgb(220, 220, 220))
-            } else {
-                style.fg(Color::Rgb(32, 32, 32))
-            };
-            
-            buf.set_string(
-                area.x,
-                area.y + area.height - 1,
-                "▁".repeat(area.width as usize),
-                bottom_style,
-            );
-        }
-
-        // Center the label text
         let x_offset = (area.width.saturating_sub(self.label.width() as u16)) / 2;
         let y_offset = (area.height.saturating_sub(1)) / 2;
 
-        // For pressed state, shift the text down and right slightly to enhance the effect
         let (x_shift, y_shift) = match self.state {
-            ButtonState::Pressed => (1, 1),
+            ButtonState::Pressed => (1, 0),
             _ => (0, 0),
         };
 

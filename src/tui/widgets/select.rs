@@ -142,11 +142,9 @@ impl<'a> Select<'a> {
                 
                 if area.contains(position) {
                     if !self.is_open {
-                        // Open dropdown when clicking on the closed select box
                         self.toggle_dropdown();
                         return true;
                     } else {
-                        // Handle click inside the dropdown
                         let dropdown_height = self.options.len().min(5) as u16;
                         let dropdown_area = Rect::new(
                             area.x,
@@ -180,22 +178,30 @@ impl<'a> Select<'a> {
 
 impl<'a> Widget for Select<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let block = Block::default()
-            .borders(Borders::ALL)
-            .border_style(self.normal_style)
-            .title(self.title);
-
-        let inner_area = block.inner(area);
-        block.render(area, buf);
-
+        let style = if self.is_open {
+            self.focused_style
+        } else {
+            self.normal_style
+        };
+        
+        let inner_area = area;
+        
         let selected_text = self.options.get(self.selected).copied().unwrap_or("");
-        let dropdown_indicator = if self.is_open { "▲" } else { "▼" };
+        
+        let dropdown_indicator = if self.is_open { " ▲" } else { " ▼" };
+        let title_text = if self.title.is_empty() { 
+            "".to_string() 
+        } else { 
+            format!("{}:", self.title) 
+        };
         
         let text = Line::from(vec![
-            Span::raw(selected_text),
-            Span::styled(format!(" {}", dropdown_indicator), self.normal_style),
+            Span::styled(title_text, style),
+            Span::styled(selected_text, style),
+            Span::styled(dropdown_indicator, style),
         ]);
         
+        buf.set_style(inner_area, style);
         buf.set_line(
             inner_area.x,
             inner_area.y,
@@ -214,17 +220,17 @@ impl<'a> Widget for Select<'a> {
             
             Clear.render(dropdown_area, buf);
             
-            let dropdown_block: Block<'_> = Block::default()
+            let dropdown_block = Block::default()
                 .borders(Borders::ALL)
                 .border_style(self.normal_style);
-                
+            
             let dropdown_block_clone = dropdown_block.clone();
             dropdown_block.render(dropdown_area, buf);
             
             let inner_dropdown = dropdown_block_clone.inner(dropdown_area);
             
             for (i, option) in self.options.iter().enumerate().take(5) {
-                let style = if i == self.selected {
+                let option_style = if i == self.selected {
                     self.selected_style
                 } else {
                     self.item_style
@@ -233,7 +239,7 @@ impl<'a> Widget for Select<'a> {
                 let text = Line::from(*option);
                 buf.set_style(
                     Rect::new(inner_dropdown.x, inner_dropdown.y + i as u16, inner_dropdown.width, 1),
-                    style,
+                    option_style,
                 );
                 buf.set_line(
                     inner_dropdown.x,

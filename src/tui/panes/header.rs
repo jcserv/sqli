@@ -1,11 +1,11 @@
 use anyhow::Result;
 use crossterm::event::{KeyEvent, MouseEvent};
 use ratatui::{
-    prelude::*,
     layout::{Constraint, Direction, Layout, Rect},
-    style::Style,
+    prelude::*,
+    style::{Color, Style},
     text::Line,
-    widgets::Paragraph,
+    widgets::{Block, Borders, Paragraph},
     Frame,
 };
 
@@ -20,37 +20,77 @@ impl HeaderPane {
     }
 
     pub fn render(&self, app: &mut App, frame: &mut Frame, area: Rect) {
-        // let focus_style = if app.focus == Focus::Header {
-        //     Style::default().fg(Color::LightBlue)
-        // } else {
-        //     Style::default().fg(Color::White)
-        // };
-
-        let app_info_line = Line::from(vec![
-            " sqli ".white().bold(),
-            "v0.1.0 ".white().into(),
-        ]);
-
+        let header_bg = Style::default();
+        
+        let header_block = Block::default()
+            .style(header_bg);
+        
+        frame.render_widget(header_block, area);
+        
         let chunks = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Length(12),         // App info
-                Constraint::Percentage(70),     // Connection selector
-                Constraint::Percentage(30),     // Run button
+                Constraint::Length(12),         // App title (sqli v0.1.0)
+                Constraint::Min(20),            // Connection area
             ])
             .split(area);
-
+        
+        let app_info_line = Line::from(vec![
+            " sqli ".white().bold(),
+            "v0.1.0".dark_gray().into(),
+        ]);
+        
         let title = Paragraph::new(app_info_line)
             .style(Style::default());
 
         frame.render_widget(title, chunks[0]);
-        app.connection_selector.render(frame, chunks[1], chunks[2]);
+        
+        let conn_area = chunks[1];
+        
+        let conn_chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Min(20),        // Connection selector
+                Constraint::Length(10),     // Run button
+            ])
+            .split(conn_area);
+            
+        let focus_style = if app.focus == Focus::Header {
+            Style::default().fg(Color::LightBlue)
+        } else {
+            Style::default().fg(Color::White)
+        };
+        
+        let connection_block = Block::default()
+            .title("Connections")
+            .title_style(focus_style)
+            .borders(Borders::ALL)
+            .border_style(focus_style);
+        
+        let inner_conn_area = connection_block.inner(conn_area);
+        frame.render_widget(connection_block, conn_area);
+        
+        app.connection_selector.set_focus_style(focus_style);        
+        app.connection_selector.render(frame, inner_conn_area, conn_chunks[1]);
     }
 }
 
 impl Instructions for HeaderPane {
-    fn get_instructions(&self, _app: &App) -> Line<'static> {
-        Line::from("")
+    fn get_instructions(&self, app: &App) -> Line<'static> {
+        if app.focus == Focus::Header {
+            Line::from(vec![
+                " Tab ".blue().bold(),
+                "Switch Panel ".white().into(),
+                " Enter ".blue().bold(),
+                "Select/Run ".white().into(),
+                " ^P ".blue().bold(),
+                "Command ".white().into(),
+                " ^C ".blue().bold(),
+                "Quit ".white().into(),
+            ])
+        } else {
+            Line::from("")
+        }
     }
 }
 
