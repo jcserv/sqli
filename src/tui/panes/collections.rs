@@ -11,7 +11,8 @@ use ratatui::{
 use tui_tree_widget::Tree;
 
 use crate::collection::{build_collection_tree, load_collections, load_sql_content};
-use super::{app::{App, Focus, Mode}, traits::{Instructions, PaneEventHandler}};
+use crate::tui::app::{App, Focus, Mode, Tab};
+use crate::tui::traits::{Instructions, PaneEventHandler};
 
 pub struct CollectionsPane;
 
@@ -187,8 +188,8 @@ impl PaneEventHandler for CollectionsPane {
     }
     
     fn handle_mouse_event(&self, app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
-        if app.current_tab != super::app::Tab::Collections {
-            app.select_tab(super::app::Tab::Collections);
+        if app.current_tab != Tab::Collections {
+            app.select_tab(Tab::Collections);
         }
         
         if app.focus == Focus::Collections {

@@ -73,7 +73,7 @@ impl<'a> App<'a> {
         let mut workspace = SearchableTextArea::default();
         workspace.init();
 
-        let collection_items = super::collections_pane::CollectionsPane::load_collections();
+        let collection_items = super::panes::collections::CollectionsPane::load_collections();
         Self {
             mode: Mode::Normal,
             current_tab: Tab::Collections,

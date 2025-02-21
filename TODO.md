@@ -35,6 +35,7 @@ widgets:
 - [ ] file manager
 
 ## nice to have
+- [ ] copy button/keybind
 - [ ] allow configs to be referenced by name case insensitively
 - [ ] display user-provided name for sql file
 - [ ] query history

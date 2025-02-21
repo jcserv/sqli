@@ -4,10 +4,7 @@ use ratatui::{
     layout::Rect, prelude::*, style::{Color, Style}, text::Line, widgets::{Block, Borders}, Frame
 };
 
-use super::{
-    app::{App, Focus, Mode},
-    traits::{Instructions, PaneEventHandler}
-};
+use crate::tui::{app::{App, Focus, Mode, Tab}, traits::{Instructions, PaneEventHandler}};
 
 pub struct ResultsPane;
 
@@ -61,7 +58,7 @@ impl PaneEventHandler for ResultsPane {
     }
     
     fn handle_mouse_event(&self, app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
-        app.select_tab(super::app::Tab::Result);
+        app.select_tab(Tab::Result);
         Ok(false)
     }
 }

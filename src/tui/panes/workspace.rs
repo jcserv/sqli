@@ -9,10 +9,7 @@ use ratatui::{
     Frame,
 };
 
-use super::{
-    app::{App, Focus, Mode},
-    traits::{Instructions, PaneEventHandler}
-};
+use crate::tui::{app::{App, Focus, Mode, Tab}, traits::{Instructions, PaneEventHandler}};
 
 pub struct WorkspacePane;
 
@@ -262,7 +259,7 @@ impl PaneEventHandler for WorkspacePane {
     }
     
     fn handle_mouse_event(&self, app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
-        app.select_tab(super::app::Tab::Workspace);        
+        app.select_tab(Tab::Workspace);        
         if app.focus == Focus::Workspace {
             app.focus = Focus::WorkspaceEdit;
         }        

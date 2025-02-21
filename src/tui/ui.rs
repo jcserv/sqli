@@ -9,7 +9,7 @@ use ratatui::{
 };
 
 use super::{
-    app::{App, Focus, Mode}, collections_pane::CollectionsPane, results_pane::ResultsPane, traits::{Instructions, PaneEventHandler}, workspace_pane::WorkspacePane
+    app::{App, Focus, Mode}, panes::{collections::CollectionsPane, results::ResultsPane, workspace::WorkspacePane}, traits::{Instructions, PaneEventHandler}
 };
 
 pub struct UI {
