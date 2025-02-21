@@ -88,13 +88,17 @@ impl ConfigManager {
     }
 
     pub fn load_config(&self) -> Result<Config> {
-        let config_path = self.config_dir.join("connections.yaml");
-        
-        if !config_path.exists() {
-            return Ok(Config { connections: Vec::new() });
+        let config_path = file::get_config_dir()?.join("connections.yaml");
+        match file::load_yaml_config::<Config>(&config_path) {
+            Ok(config) => Ok(config),
+            Err(err) => {
+                if err.to_string().contains("No such file or directory") {
+                    Ok(Config { connections: Vec::new() })
+                } else {
+                    Err(err)
+                }
+            }
         }
-
-        file::load_yaml_config::<Config>(&config_path)
     }
 
     pub fn save_config(&self, config: &Config) -> Result<()> {

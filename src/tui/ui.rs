@@ -37,7 +37,7 @@ impl UI {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(1),     
+                Constraint::Length(3),     
                 Constraint::Min(0),        
                 Constraint::Length(3),    
             ])
@@ -47,7 +47,7 @@ impl UI {
         let main_area = chunks[1];
         let status_area = chunks[2];
 
-        self.render_app_info(app, frame, top_bar);
+        self.render_top_bar(app, frame, top_bar);
 
         let main_chunks = Layout::default()
             .direction(Direction::Horizontal)
@@ -77,7 +77,7 @@ impl UI {
         self.render_instructions(app, frame, status_area);
     }
 
-    fn render_app_info(&self, _app: &App, frame: &mut Frame, area: Rect) {
+    fn render_top_bar(&self, app: &App, frame: &mut Frame, area: Rect) {
         let app_info_line = Line::from(vec![
             " sqli ".white().bold(),
             "v0.1.0 ".white().into(),
@@ -95,6 +95,8 @@ impl UI {
             .style(Style::default());
 
         frame.render_widget(title, chunks[0]);
+
+        app.connection_selector.render_with_refs(frame, area);
     }
 
     pub fn render_instructions(&self, app: &App, frame: &mut Frame, area: Rect) {

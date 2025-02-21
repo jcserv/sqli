@@ -7,6 +7,7 @@ use tui_textarea::{TextArea, Input, Key};
 use tui_tree_widget::{TreeItem, TreeState};
 
 use super::ui::UI;
+use super::widgets::connection_select::ConnectionSelector;
 use super::widgets::searchable_textarea::SearchableTextArea;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -59,6 +60,7 @@ pub struct App<'a> {
     pub current_tab: Tab,
     pub focus: Focus,         
     pub workspace: SearchableTextArea<'a>,
+    pub connection_selector: ConnectionSelector<'a>,
     pub command_input: String,
     pub message: String,
     pub queries: Vec<String>,
@@ -74,11 +76,25 @@ impl<'a> App<'a> {
         workspace.init();
 
         let collection_items = super::panes::collections::CollectionsPane::load_collections();
+        let mut connection_selector = ConnectionSelector::new();
+        
+        let connections = match crate::config::ConfigManager::new() {
+            Ok(config_manager) => {
+                match config_manager.list_connections() {
+                    Ok(connections) => connections,
+                    Err(_) => Vec::new(),
+                }
+            },
+            Err(_) => Vec::new(),
+        };
+        connection_selector.update_connections(connections);
+        
         Self {
             mode: Mode::Normal,
             current_tab: Tab::Collections,
             focus: Focus::Collections,
             workspace,
+            connection_selector,
             command_input: String::new(),
             message: String::new(),
             queries: Vec::new(),
@@ -228,6 +244,45 @@ impl<'a> App<'a> {
             _ => self.message = format!("Unknown command: {}", cmd),
         }
         Ok(())
+    }
+
+    pub fn execute_query(&mut self) {
+        if let Some(connection_name) = self.connection_selector.get_selected_connection() {
+            let query = self.workspace.get_content();
+            if !query.is_empty() {
+                self.message = format!("Executing query using connection: {}", connection_name);
+                
+                // TODO: Implement actual query execution here:
+                // 1. Get connection details from ConfigManager
+                // 2. Create SQL executor
+                // 3. Run the query
+                // 4. Display results in the results pane
+                
+                // Example of what this might look like:
+                /*
+                match ConfigManager::new().and_then(|cm| cm.get_connection(connection_name)) {
+                    Ok(Some(connection)) => {
+                        // Run query in a separate thread or async task
+                        let query_text = self.workspace.get_content();
+                        self.message = format!("Running query on {}...", connection_name);
+                        
+                        // The actual execution would happen asynchronously
+                        // and results would be displayed in the results pane
+                    },
+                    Ok(None) => {
+                        self.message = format!("Connection '{}' not found", connection_name);
+                    },
+                    Err(err) => {
+                        self.message = format!("Error: {}", err);
+                    }
+                }
+                */
+            } else {
+                self.message = "Query is empty".to_string();
+            }
+        } else {
+            self.message = "No connection selected".to_string();
+        }
     }
 
     pub fn save_query(&mut self) {

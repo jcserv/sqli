@@ -179,6 +179,11 @@ impl PaneEventHandler for WorkspacePane {
                                 app.save_query();
                                 Ok(false)
                             }
+                            KeyCode::Enter if key_event.modifiers.contains(KeyModifiers::CONTROL) || 
+                            key_event.modifiers.contains(KeyModifiers::SUPER) => {
+                                app.execute_query();
+                                Ok(false)
+                            }
                             _ => {
                                 // Forward all other keys to the text area
                                 let input = tui_textarea::Input::from(key_event);
