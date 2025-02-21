@@ -174,7 +174,7 @@ impl<'a> App<'a> {
         match key_event.code {
             KeyCode::Char('c') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.should_quit = true;
-                Ok(true)
+                Ok(false)
             }
             KeyCode::Esc => {
                 self.mode = Mode::Normal;

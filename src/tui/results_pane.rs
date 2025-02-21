@@ -65,8 +65,8 @@ impl PaneEventHandler for ResultsPane {
         Ok(false)
     }
     
-    fn handle_mouse_event(&self, _app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
-        // TODO
+    fn handle_mouse_event(&self, app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
+        app.select_tab(super::app::Tab::Result);
         Ok(false)
     }
 }

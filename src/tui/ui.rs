@@ -129,7 +129,7 @@ impl UI {
         match (key_event.code, key_event.modifiers) {
             (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
                 app.should_quit = true;
-                return Ok(true);
+                return Ok(false);
             }
             (KeyCode::Tab, _) if app.focus != Focus::WorkspaceEdit => {
                 app.cycle_tab();
@@ -160,42 +160,19 @@ impl UI {
             let x = mouse_event.column as usize;
             let y = mouse_event.row as usize;
             
-            if y > 1 && y < height - 3 { // Main content area
-                if x < width * 15 / 100 {
-                    // Left panel - Collections
-                    app.select_tab(super::app::Tab::Collections);
-                    
-                    if app.focus == Focus::Collections {
-                        app.focus = Focus::CollectionsEdit;
-                    }
-                } else {
-                    let content_height = height - 5;
-                    if y < 1 + (content_height * 70 / 100) {
-                        // Top-right - Workspace
-                        app.select_tab(super::app::Tab::Workspace);
-                        
-                        if app.focus == Focus::Workspace {
-                            app.focus = Focus::WorkspaceEdit;
-                        }
-                    } else {
-                        // Bottom-right - Results
-                        app.select_tab(super::app::Tab::Result);
-                    }
-                }
+            if y > 1 && y < height - 3 {
+                let content_height = height - 5;
                 
-                match app.focus {
-                    Focus::Collections | Focus::CollectionsEdit => return self.collections_pane.handle_mouse_event(app, mouse_event),
-                    Focus::Workspace | Focus::WorkspaceEdit => return self.workspace_pane.handle_mouse_event(app, mouse_event),
-                    Focus::Result => return self.results_pane.handle_mouse_event(app, mouse_event),
+                if x < width * 15 / 100 {
+                    return self.collections_pane.handle_mouse_event(app, mouse_event);
+                } else if y < 1 + (content_height * 70 / 100) {
+                    return self.workspace_pane.handle_mouse_event(app, mouse_event);
+                } else {
+                    return self.results_pane.handle_mouse_event(app, mouse_event);
                 }
             }
         }
-        
-        // If not handled by focus selection, delegate based on current focus
-        match app.focus {
-            Focus::Collections | Focus::CollectionsEdit => self.collections_pane.handle_mouse_event(app, mouse_event),
-            Focus::Workspace | Focus::WorkspaceEdit => self.workspace_pane.handle_mouse_event(app, mouse_event),
-            Focus::Result => self.results_pane.handle_mouse_event(app, mouse_event),
-        }
+
+        Ok(false)
     }
 }

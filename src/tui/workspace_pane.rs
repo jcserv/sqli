@@ -261,8 +261,11 @@ impl PaneEventHandler for WorkspacePane {
         }
     }
     
-    fn handle_mouse_event(&self, _app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
-        // Not implemented yet
+    fn handle_mouse_event(&self, app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
+        app.select_tab(super::app::Tab::Workspace);        
+        if app.focus == Focus::Workspace {
+            app.focus = Focus::WorkspaceEdit;
+        }        
         Ok(false)
     }
 }
