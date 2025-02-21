@@ -205,6 +205,7 @@ impl PaneEventHandler for CollectionsPane {
         if let Some(area) = self.last_area {
             let tree = FileTree::new(&app.collection_items).expect("all item identifiers are unique");
             if tree.handle_mouse_event(&mut app.collection_state, mouse_event, area)? {
+                // If a click was handled successfully, load the file if it's a SQL file
                 self.handle_selection(app)?;
                 return Ok(false);
             }

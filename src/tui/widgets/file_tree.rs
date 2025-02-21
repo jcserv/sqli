@@ -61,8 +61,15 @@ where
                     return Ok(false);
                 }
                 
-                if state.click_at(position) {
-                    return Ok(false);
+                if let Some(identifier) = state.rendered_at(position) {
+                    let was_selected = identifier == state.selected();
+                    state.select(identifier.to_vec());
+                    
+                    if was_selected {
+                        state.toggle_selected();
+                    }
+                    
+                    return Ok(true);
                 }
             }
             _ => {}
