@@ -19,6 +19,7 @@ pub enum Mode {
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum Tab {
+    Header,
     Collections,
     Workspace,
     Result,
@@ -48,6 +49,7 @@ impl Default for SearchBox<'_> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum Focus {
+    Header,
     Collections,
     CollectionsEdit,
     Workspace,      
@@ -91,8 +93,8 @@ impl<'a> App<'a> {
         
         Self {
             mode: Mode::Normal,
-            current_tab: Tab::Collections,
-            focus: Focus::Collections,
+            current_tab: Tab::Header,
+            focus: Focus::Header,
             workspace,
             connection_selector,
             command_input: String::new(),
@@ -218,6 +220,7 @@ impl<'a> App<'a> {
     pub fn select_tab(&mut self, tab: Tab) {
         self.current_tab = tab;
         self.focus = match tab {
+            Tab::Header => Focus::Header,
             Tab::Collections => Focus::Collections,
             Tab::Workspace => Focus::Workspace,
             Tab::Result => Focus::Result,
@@ -226,9 +229,10 @@ impl<'a> App<'a> {
 
     pub fn cycle_tab(&mut self) {
         match self.current_tab {
+            Tab::Header => self.select_tab(Tab::Collections),
             Tab::Collections => self.select_tab(Tab::Workspace),
             Tab::Workspace => self.select_tab(Tab::Result),
-            Tab::Result => self.select_tab(Tab::Collections),
+            Tab::Result => self.select_tab(Tab::Header),
         }
     }
 

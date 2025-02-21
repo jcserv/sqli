@@ -1,18 +1,22 @@
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent};
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Style, Stylize},
-    text::Line,
-    widgets::{Block, Borders, Paragraph},
-    Frame,
+    layout::{Constraint, Direction, Layout, Rect}, prelude::*, text::Line, widgets::{Block, Borders, Paragraph}, Frame
 };
 
 use super::{
-    app::{App, Focus, Mode}, panes::{collections::CollectionsPane, results::ResultsPane, workspace::WorkspacePane, traits::{Instructions, PaneEventHandler}},
+    app::{App, Focus, Mode},
+    panes::{
+        collections::CollectionsPane,
+        results::ResultsPane,
+        header::HeaderPane,
+        traits::{Instructions, PaneEventHandler},
+        workspace::WorkspacePane,
+    },
 };
 
 pub struct UI {
+    header_pane: HeaderPane,
     collections_pane: CollectionsPane,
     workspace_pane: WorkspacePane,
     results_pane: ResultsPane,
@@ -21,6 +25,7 @@ pub struct UI {
 impl UI {
     pub fn new() -> Self {
         Self {
+            header_pane: HeaderPane::new(),
             collections_pane: CollectionsPane::new(),
             workspace_pane: WorkspacePane::new(),
             results_pane: ResultsPane::new(),
@@ -43,11 +48,11 @@ impl UI {
             ])
             .split(frame.area());
 
-        let top_bar = chunks[0];
+        let header = chunks[0];
         let main_area = chunks[1];
         let status_area = chunks[2];
 
-        self.render_top_bar(app, frame, top_bar);
+        self.header_pane.render(app, frame, header);
 
         let main_chunks = Layout::default()
             .direction(Direction::Horizontal)
@@ -77,28 +82,6 @@ impl UI {
         self.render_instructions(app, frame, status_area);
     }
 
-    fn render_top_bar(&self, app: &App, frame: &mut Frame, area: Rect) {
-        let app_info_line = Line::from(vec![
-            " sqli ".white().bold(),
-            "v0.1.0 ".white().into(),
-        ]);
-
-        let chunks = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Length(12),
-                Constraint::Min(0),
-            ])
-            .split(area);
-
-        let title = Paragraph::new(app_info_line)
-            .style(Style::default());
-
-        frame.render_widget(title, chunks[0]);
-
-        app.connection_selector.render_with_refs(frame, area);
-    }
-
     pub fn render_instructions(&self, app: &App, frame: &mut Frame, area: Rect) {
         let instructions = match app.mode {
             Mode::Normal => {
@@ -106,6 +89,7 @@ impl UI {
                     Focus::Collections | Focus::CollectionsEdit => self.collections_pane.get_instructions(app),
                     Focus::Workspace | Focus::WorkspaceEdit => self.workspace_pane.get_instructions(app),
                     Focus::Result => self.results_pane.get_instructions(app),
+                    Focus::Header => self.header_pane.get_instructions(app),
                 }
             },
             Mode::Command => Line::from(vec![
@@ -148,6 +132,7 @@ impl UI {
             Focus::Collections | Focus::CollectionsEdit => self.collections_pane.handle_key_event(app, key_event),
             Focus::Workspace | Focus::WorkspaceEdit => self.workspace_pane.handle_key_event(app, key_event),
             Focus::Result => self.results_pane.handle_key_event(app, key_event),
+            Focus::Header => self.header_pane.handle_key_event(app, key_event),
         }
     }
 
@@ -155,23 +140,32 @@ impl UI {
         use crossterm::event::{MouseEventKind, MouseButton};
         
         if let MouseEventKind::Down(MouseButton::Left) = mouse_event.kind {
-            let terminal_size = crossterm::terminal::size().unwrap_or((80, 24));
-            let width = terminal_size.0 as usize;
-            let height = terminal_size.1 as usize;
-            
-            let x = mouse_event.column as usize;
             let y = mouse_event.row as usize;
             
-            if y > 1 && y < height - 3 {
-                let content_height = height - 5;
-                
-                if x < width * 15 / 100 {
-                    return self.collections_pane.handle_mouse_event(app, mouse_event);
-                } else if y < 1 + (content_height * 70 / 100) {
-                    return self.workspace_pane.handle_mouse_event(app, mouse_event);
-                } else {
-                    return self.results_pane.handle_mouse_event(app, mouse_event);
-                }
+            // Header area (0-2)
+            if y < 3 {
+                return self.header_pane.handle_mouse_event(app, mouse_event);
+            }
+            
+            // Status bar area (bottom 3 lines)
+            let terminal_size = crossterm::terminal::size().unwrap_or((80, 24));
+            let height = terminal_size.1 as usize;
+            if y >= height - 3 {
+                return Ok(false); // Status bar doesn't handle events
+            }
+            
+            // Main content area
+            let content_height = height - 6; // Excluding header and status bar
+            let x = mouse_event.column as usize;
+            let width = terminal_size.0 as usize;
+            
+            // Content panes
+            if x < width * 20 / 100 {
+                return self.collections_pane.handle_mouse_event(app, mouse_event);
+            } else if y < 3 + (content_height * 70 / 100) {
+                return self.workspace_pane.handle_mouse_event(app, mouse_event);
+            } else {
+                return self.results_pane.handle_mouse_event(app, mouse_event);
             }
         }
 

@@ -1,7 +1,6 @@
-use anyhow::Result;
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind, MouseButton};
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::Rect,
     style::{Color, Style},
     Frame,
 };
@@ -24,6 +23,9 @@ pub struct ConnectionSelector<'a> {
     connection_names: Vec<String>,
     selected_index: usize,
     button_state: ButtonState,
+    // Store positions for event handling
+    dropdown_area: Option<Rect>,
+    button_area: Option<Rect>,
 }
 
 impl<'a> ConnectionSelector<'a> {
@@ -44,6 +46,8 @@ impl<'a> ConnectionSelector<'a> {
             connection_names,
             selected_index: 0,
             button_state: ButtonState::Normal,
+            dropdown_area: None,
+            button_area: None,
         }
     }
 
@@ -59,14 +63,9 @@ impl<'a> ConnectionSelector<'a> {
         }
     }
 
-    pub fn render_with_refs(&self, frame: &mut Frame, area: Rect) {
-        let chunks = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Percentage(80),
-                Constraint::Percentage(20),
-            ])
-            .split(area);
+    pub fn render(&mut self, frame: &mut Frame, selector_area: Rect, button_area: Rect) {
+        self.dropdown_area = Some(selector_area);
+        self.button_area = Some(button_area);
     
         let options_ref: Vec<&str> = self.connection_names.iter()
             .map(|s| s.as_str())
@@ -83,20 +82,24 @@ impl<'a> ConnectionSelector<'a> {
             .pressed_style(Style::default().fg(Color::Black).bg(Color::LightBlue))
             .state(self.button_state);
     
-        frame.render_widget(select, chunks[0]);        
-        frame.render_widget(button, chunks[1]);
+        frame.render_widget(select, selector_area);        
+        frame.render_widget(button, button_area);
     }
 
-    pub fn handle_key_event(&mut self, key_event: KeyEvent) -> Result<bool> {
+    pub fn handle_key_event(&mut self, key_event: KeyEvent) -> bool {
         match key_event.code {
             KeyCode::Tab => {
                 self.cycle_focus();
-                return Ok(true);
+                return true;
             },
             KeyCode::Enter if key_event.modifiers.contains(KeyModifiers::CONTROL) 
                          || key_event.modifiers.contains(KeyModifiers::SUPER) => {
                 self.button_state = ButtonState::Pressed;
-                return Ok(true);
+                return true;
+            },
+            KeyCode::Enter if self.focus == SelectorFocus::Button => {
+                self.button_state = ButtonState::Pressed;
+                return true;
             },
             _ => {
                 match self.focus {
@@ -114,65 +117,79 @@ impl<'a> ConnectionSelector<'a> {
                         
                         if select.handle_key_event(key_event, true) {
                             self.selected_index = select.selected();
-                            return Ok(true);
+                            return true;
                         }
                     },
                     SelectorFocus::Button => {
                         let mut button = self.run_button.clone();
                         if button.handle_key_event(key_event, true) {
                             self.button_state = ButtonState::Pressed;
-                            return Ok(true);
+                            return true;
                         }
                     },
                     SelectorFocus::None => (),
                 }
             }
         }
-        Ok(false)
+        false
     }
 
-    pub fn handle_mouse_event(&mut self, mouse_event: MouseEvent, area: Rect) -> Result<bool> {
-        let chunks = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Percentage(80),
-                Constraint::Percentage(20),
-            ])
-            .split(area);
+    pub fn handle_mouse_event(&mut self, mouse_event: MouseEvent) -> bool {
+        if let (Some(selector_area), Some(button_area)) = (self.dropdown_area, self.button_area) {
+            match mouse_event.kind {
+                MouseEventKind::Down(MouseButton::Left) => {
+                    let mouse_x = mouse_event.column;
+                    let mouse_y = mouse_event.row;
 
-        // First check the select widget
-        // Create temporary vector of references for the select widget
-        let options_ref: Vec<&str> = self.connection_names.iter()
-            .map(|s| s.as_str())
-            .collect();
-            
-        let mut select = Select::new(options_ref)
-            .title("Connection")
-            .normal_style(Style::default())
-            .focused_style(Style::default().fg(Color::LightBlue));
-            
-        // Set the selected index to match our stored value
-        select.set_selected(self.selected_index);
-        
-        if select.handle_mouse_event(mouse_event, chunks[0]) {
-            // Update our selected index from the widget
-            self.selected_index = select.selected();
-            self.focus = SelectorFocus::Dropdown;
-            return Ok(true);
+                    if mouse_x >= selector_area.x && 
+                       mouse_x < selector_area.x + selector_area.width &&
+                       mouse_y >= selector_area.y && 
+                       mouse_y < selector_area.y + selector_area.height {
+                        
+                        self.focus = SelectorFocus::Dropdown;
+                        
+                        let options_ref: Vec<&str> = self.connection_names.iter()
+                            .map(|s| s.as_str())
+                            .collect();
+                        
+                        let mut select = Select::new(options_ref);
+                        select.set_selected(self.selected_index);
+                        
+                        if select.handle_mouse_event(mouse_event, selector_area) {
+                            self.selected_index = select.selected();
+                            return true;
+                        }
+                    }
+                    
+                    else if mouse_x >= button_area.x && 
+                            mouse_x < button_area.x + button_area.width &&
+                            mouse_y >= button_area.y && 
+                            mouse_y < button_area.y + button_area.height {
+                        
+                        self.focus = SelectorFocus::Button;
+                        self.button_state = ButtonState::Pressed;
+                        return true;
+                    }
+                },
+                MouseEventKind::Up(MouseButton::Left) => {
+                    if self.button_state == ButtonState::Pressed {
+                        let mouse_x = mouse_event.column;
+                        let mouse_y = mouse_event.row;
+                        
+                        if mouse_x >= button_area.x && 
+                           mouse_x < button_area.x + button_area.width &&
+                           mouse_y >= button_area.y && 
+                           mouse_y < button_area.y + button_area.height {
+                            return true;
+                        } else {
+                            self.button_state = ButtonState::Focused;
+                        }
+                    }
+                },
+                _ => {}
+            }
         }
-
-        let mut button = self.run_button.clone();
-        if button.handle_mouse_event(mouse_event, chunks[1]) {
-            self.button_state = if button.is_pressed() {
-                ButtonState::Pressed
-            } else {
-                ButtonState::Focused
-            };
-            self.focus = SelectorFocus::Button;
-            return Ok(true);
-        }
-
-        Ok(false)
+        false
     }
 
     fn cycle_focus(&mut self) {
