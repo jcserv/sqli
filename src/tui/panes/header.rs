@@ -20,18 +20,11 @@ impl HeaderPane {
     }
 
     pub fn render(&self, app: &mut App, frame: &mut Frame, area: Rect) {
-        let header_bg = Style::default();
-        
-        let header_block = Block::default()
-            .style(header_bg);
-        
-        frame.render_widget(header_block, area);
-        
         let chunks = Layout::default()
-            .direction(Direction::Horizontal)
+            .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(12),         // App title (sqli v0.1.0)
-                Constraint::Min(20),            // Connection area
+                Constraint::Length(1),          // App title bar
+                Constraint::Min(1),             // Connection area
             ])
             .split(area);
         
@@ -42,7 +35,6 @@ impl HeaderPane {
         
         let title = Paragraph::new(app_info_line)
             .style(Style::default());
-
         frame.render_widget(title, chunks[0]);
         
         let conn_area = chunks[1];

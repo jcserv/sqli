@@ -42,7 +42,7 @@ impl UI {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(3),     // Header area - fixed height
+                Constraint::Length(4),     // Header area - fixed height
                 Constraint::Min(0),        // Main content area
                 Constraint::Length(3),     // Status bar - fixed height
             ])

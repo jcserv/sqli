@@ -104,7 +104,9 @@ impl<'a> ConnectionSelector<'a> {
             
             let dropdown_block = Block::default()
                 .borders(Borders::ALL)
-                .border_style(self.focus_style);            
+                .border_style(self.focus_style)
+                .style(Style::default().bg(Color::DarkGray));
+                
             let dropdown_block_inner = dropdown_block.clone();
             dropdown_block.render(dropdown_area, frame.buffer_mut());
             let inner_dropdown = dropdown_block_inner.inner(dropdown_area);
@@ -203,24 +205,24 @@ impl<'a> ConnectionSelector<'a> {
                 MouseEventKind::Down(MouseButton::Left) => {
                     let mouse_x = mouse_event.column;
                     let mouse_y = mouse_event.row;
-
-                    if mouse_x >= selector_area.x && 
-                       mouse_x < selector_area.x + selector_area.width &&
-                       mouse_y >= selector_area.y && 
-                       mouse_y < selector_area.y + selector_area.height {
-                        
-                        self.focus = SelectorFocus::Dropdown;
-                        self.toggle_dropdown();
-                        return true;
-                    }
-                    
-                    else if mouse_x >= button_area.x && 
-                            mouse_x < button_area.x + button_area.width &&
-                            mouse_y >= button_area.y && 
-                            mouse_y < button_area.y + button_area.height {
+    
+                    if mouse_x >= button_area.x && 
+                       mouse_x < button_area.x + button_area.width &&
+                       mouse_y >= button_area.y && 
+                       mouse_y < button_area.y + button_area.height {
                         
                         self.focus = SelectorFocus::Button;
                         self.button_state = ButtonState::Pressed;
+                        return true;
+                    }
+                    
+                    else if mouse_x >= selector_area.x && 
+                            mouse_x < selector_area.x + selector_area.width &&
+                            mouse_y >= selector_area.y && 
+                            mouse_y < selector_area.y + selector_area.height {
+                        
+                        self.focus = SelectorFocus::Dropdown;
+                        self.toggle_dropdown();
                         return true;
                     }
                 },
