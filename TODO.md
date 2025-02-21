@@ -2,9 +2,11 @@
 
 ## tui
 - [ ] collections
-  - [X] allow clicking to select items in tree 
+  - [X] allow clicking to select items in tree
+  - [ ] display user/local
+- [ ] connections select drop down 
 - [ ] execute query - button & keybind
-- [ ] creating a sql file
+- [ ] creating a sql file, saving to collection
 - [ ] view database schema
 - [ ] query: when using a sql file with parameters, prompt for values
 - [ ] results pane
@@ -32,7 +34,7 @@ widgets:
 ## bugs
 
 ## refactors
-- [ ] file manager
+- [X] file manager
 
 ## nice to have
 - [ ] copy button/keybind

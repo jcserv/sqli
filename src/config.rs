@@ -1,8 +1,8 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::io::Write;
 use std::path::PathBuf;
+
+use crate::file;
 
 pub async fn run_config_add(config_manager: &mut ConfigManager, name: String, conn_type: String, host: String, port: u16, database: String, user: String, password: Option<String>) -> Result<()> {
     let connection = Connection {
@@ -83,18 +83,7 @@ pub struct ConfigManager {
 
 impl ConfigManager {
     pub fn new() -> Result<Self> {
-        let config_dir = dirs::config_dir()
-            .ok_or_else(|| anyhow::anyhow!("Could not determine config directory"))?
-            .join("sqli");
-
-        fs::create_dir_all(&config_dir)?;
-
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            fs::set_permissions(&config_dir, fs::Permissions::from_mode(0o700))?;
-        }
-
+        let config_dir = file::get_config_dir()?;
         Ok(Self { config_dir })
     }
 
@@ -105,9 +94,7 @@ impl ConfigManager {
             return Ok(Config { connections: Vec::new() });
         }
 
-        let contents = fs::read_to_string(config_path)?;
-        let config: Config = serde_yaml::from_str(&contents)?;
-        Ok(config)
+        file::load_yaml_config::<Config>(&config_path)
     }
 
     pub fn save_config(&self, config: &Config) -> Result<()> {
@@ -119,21 +106,7 @@ impl ConfigManager {
             }).collect(),
         };
 
-        let yaml = serde_yaml::to_string(&config_to_save)?;
-
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::OpenOptionsExt;
-            fs::OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .mode(0o600)
-                .open(&config_path)?
-                .write_all(yaml.as_bytes())?;
-        }
-
-        Ok(())
+        file::save_yaml_config(&config_path, &config_to_save)
     }
 
     pub fn add_connection(&mut self, connection: Connection) -> Result<()> {

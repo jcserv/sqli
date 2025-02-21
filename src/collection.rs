@@ -1,8 +1,9 @@
 use anyhow::Result;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use std::fs;
+use std::path::PathBuf;
 use tui_tree_widget::TreeItem;
+
+use crate::file::load_collections_from_dir;
 
 pub struct Collection {
     pub name: String,
@@ -25,40 +26,6 @@ pub fn load_collections() -> Result<Vec<Collection>> {
     }
     
     Ok(collections)
-}
-
-fn load_collections_from_dir(dir: &Path, collections: &mut Vec<Collection>) -> Result<()> {
-    if !dir.is_dir() {
-        return Ok(());
-    }
-    
-    for entry in fs::read_dir(dir)? {
-        let entry = entry?;
-        let path = entry.path();
-        
-        if path.is_dir() {
-            let name = path.file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("unknown")
-                .to_string();
-            
-            let mut files = Vec::new();
-            for file_entry in fs::read_dir(&path)? {
-                let file_entry = file_entry?;
-                let file_path = file_entry.path();
-                
-                if file_path.is_file() && file_path.extension().and_then(|s| s.to_str()) == Some("sql") {
-                    if let Some(file_name) = file_path.file_name().and_then(|n| n.to_str()) {
-                        files.push(file_name.to_string());
-                    }
-                }
-            }
-            
-            collections.push(Collection { name, files });
-        }
-    }
-    
-    Ok(())
 }
 
 pub fn collections_to_hashmap(collections: &[Collection]) -> HashMap<String, Vec<String>> {
@@ -85,29 +52,4 @@ pub fn build_collection_tree<'a>(collections: &[Collection]) -> Vec<TreeItem<'a,
             ).expect("all item identifiers are unique")
         })
         .collect()
-}
-
-// Function to load SQL content from a file
-pub fn load_sql_content(collection_name: &str, file_name: &str) -> Result<String> {
-    let local_path = PathBuf::from("./sqli")
-        .join(collection_name)
-        .join(file_name);
-    
-    if local_path.exists() {
-        return Ok(fs::read_to_string(local_path)?);
-    }
-    
-    if let Some(config_dir) = dirs::config_dir() {
-        let user_path = config_dir
-            .join("sqli")
-            .join("collections")
-            .join(collection_name)
-            .join(file_name);
-        
-        if user_path.exists() {
-            return Ok(fs::read_to_string(user_path)?);
-        }
-    }
-    
-    anyhow::bail!("SQL file not found: {}/{}", collection_name, file_name)
 }

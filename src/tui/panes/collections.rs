@@ -9,7 +9,7 @@ use ratatui::{
     widgets::{Block, Borders, Scrollbar, ScrollbarOrientation},
 };
 
-use crate::{collection::{build_collection_tree, load_collections, load_sql_content}, tui::widgets::file_tree::FileTree};
+use crate::{collection::{build_collection_tree, load_collections}, file::load_sql_content, tui::widgets::file_tree::FileTree};
 use crate::tui::app::{App, Focus, Mode, Tab};
 use super::traits::{Instructions, PaneEventHandler};
 
@@ -125,10 +125,6 @@ impl Instructions for CollectionsPane {
                         Line::from(vec![
                             " Esc ".blue().bold(),
                             "Deselect ".white().into(),
-                            " ↑/↓ ".blue().bold(),
-                            "Navigate ".white().into(),
-                            " Enter ".blue().bold(),
-                            "Collapse/Expand ".white().into(),
                             " ^P ".blue().bold(),
                             "Command ".white().into(),
                             " ^C ".blue().bold(),
