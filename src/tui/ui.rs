@@ -2,25 +2,30 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style, Stylize},
     text::Line,
-    widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation},
+    widgets::{Block, Borders, Paragraph},
     Frame,
 };
-use tui_tree_widget::Tree;
 
-use super::app::{App, Focus, Mode};
+use super::{
+    app::{App, Focus, Mode},
+    collections_pane::CollectionsPane,
+    results_pane::ResultsPane,
+    workspace_pane::WorkspacePane,
+};
 
-pub struct UI;
+pub struct UI {
+    collections_pane: CollectionsPane,
+    workspace_pane: WorkspacePane,
+    results_pane: ResultsPane,
+}
 
 impl UI {
     pub fn new() -> Self {
-        Self
-    }
-
-    fn get_border_style(&self, app: &App, target_focus: Focus) -> Style {
-        if !(app.focus == target_focus) {
-            return Style::default().fg(Color::White)
+        Self {
+            collections_pane: CollectionsPane::new(),
+            workspace_pane: WorkspacePane::new(),
+            results_pane: ResultsPane::new(),
         }
-        return Style::default().fg(Color::LightBlue).bold()
     }
 
     pub fn render(&self, app: &mut App, frame: &mut Frame) {
@@ -63,9 +68,9 @@ impl UI {
         let workspace_area = right_chunks[0];
         let results_area = right_chunks[1];
 
-        self.render_collections(app, frame, left_panel);
-        self.render_workspace(app, frame, workspace_area, search_height);
-        self.render_result(app, frame, results_area);
+        self.collections_pane.render(app, frame, left_panel);
+        self.workspace_pane.render(app, frame, workspace_area, search_height);
+        self.results_pane.render(app, frame, results_area);
         self.render_instructions(app, frame, status_area);
     }
 
@@ -87,86 +92,6 @@ impl UI {
             .style(Style::default());
 
         frame.render_widget(title, chunks[0]);
-    }
-
-    fn render_collections(&self, app: &mut App, frame: &mut Frame, area: Rect) {
-        let focus_style = self.get_border_style(app, Focus::Collections);
-
-        let tree = Tree::new(&app.collection_items)
-            .expect("all item identifiers are unique")
-            .block(
-                Block::default()
-                    .title("Collections")
-                    .title_style(focus_style)
-                    .borders(Borders::ALL)
-                    .border_style(focus_style)
-            )
-            .highlight_style(
-                Style::default()
-                    .fg(Color::Black)
-                    .bg(Color::LightBlue)
-                    .bold()
-            )
-            .highlight_symbol("➤ ")
-            .experimental_scrollbar(Some(
-                Scrollbar::new(ScrollbarOrientation::VerticalRight)
-                    .begin_symbol(None)
-                    .track_symbol(None)
-                    .end_symbol(None)
-            ));
-
-        // Render the tree as a stateful widget
-        frame.render_stateful_widget(tree, area, &mut app.collection_state);
-    }
-
-    fn render_workspace(&self, app: &mut App, frame: &mut Frame, area: Rect, search_height: u16) {
-        let workspace_focus = if app.focus == Focus::WorkspaceEdit {
-            Style::default().fg(Color::LightBlue).bold()
-        } else {
-            self.get_border_style(app, Focus::Workspace).not_bold()
-        };
-
-        let block = Block::default()
-            .title("Workspace")
-            .title_style(workspace_focus)
-            .borders(Borders::ALL)
-            .border_style(workspace_focus);
-
-        let mut workspace_widget = app.workspace.clone();
-        workspace_widget.set_block(block);
-        
-        if !app.search.open {
-            frame.render_widget(&workspace_widget, area);
-            return;
-        }
-        let workspace_area = Rect::new(
-            area.x, 
-            area.y + search_height, 
-            area.width, 
-            area.height.saturating_sub(search_height)
-        );
-        
-        let search_area = Rect::new(
-            area.x,
-            area.y,
-            area.width,
-            search_height
-        );
-        
-        frame.render_widget(&app.search.textarea, search_area);
-        frame.render_widget(&workspace_widget, workspace_area);
-    }
-
-    fn render_result(&self, app: &mut App, frame: &mut Frame, area: Rect) {
-        let focus_style = self.get_border_style(app, Focus::Result);
-
-        let block = Block::default()
-            .title("Results")
-            .title_style(focus_style)
-            .borders(Borders::ALL)
-            .border_style(focus_style);
-
-        frame.render_widget(block, area);
     }
 
     fn render_instructions(&self, app: &mut App, frame: &mut Frame, area: Rect) {
@@ -279,5 +204,9 @@ impl UI {
             .block(Block::default().borders(Borders::ALL));
         
         frame.render_widget(status, area);
+    }
+    
+    pub fn update_dimensions(&self, app: &mut App, height: u16) {
+        self.workspace_pane.update_dimensions(app, height);
     }
 }

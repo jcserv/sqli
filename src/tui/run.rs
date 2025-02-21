@@ -46,7 +46,7 @@ fn run_app(
     ui: &UI,
 ) -> Result<()> {
     let size = terminal.size()?;
-    app.update_dimensions(size.height);
+    ui.update_dimensions(app, size.height);
 
     loop {
         terminal.draw(|frame| ui.render(app, frame))?;
@@ -66,7 +66,7 @@ fn run_app(
             Event::Resize(width, height) => {
                 terminal.resize(ratatui::prelude::Rect::new(0, 0, width, height))?;
                 terminal.clear()?;
-                app.update_dimensions(height);
+                ui.update_dimensions(app, height);
             }
         }
     }

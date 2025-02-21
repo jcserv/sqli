@@ -46,7 +46,7 @@ impl Default for SearchBox<'_> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum Focus {
-    Collections,    
+    Collections,
     Workspace,      
     WorkspaceEdit,  
     Result,         
@@ -71,17 +71,7 @@ impl<'a> App<'a> {
         let mut workspace = SearchableTextArea::default();
         workspace.init();
 
-        let collections = match crate::collection::load_collections() {
-            Ok(cols) => cols,
-            Err(err) => {
-                eprintln!("Error loading collections: {}", err);
-                Vec::new()
-            }
-        };
-        
-        let collection_items = crate::collection::build_collection_tree(&collections);
-        
-        
+        let collection_items = super::collections_pane::CollectionsPane::load_collections();
         Self {
             mode: Mode::Normal,
             current_tab: Tab::Collections,
@@ -176,7 +166,9 @@ impl<'a> App<'a> {
                 match key_event.code {
                     KeyCode::Enter | KeyCode::Char(' ') => {
                         self.collection_state.toggle_selected();
-                        self.handle_collection_selection()?;
+                        let collections_pane = super::collections_pane::CollectionsPane::new();
+
+                        collections_pane.handle_selection(self)?;
                         Ok(false)
                     },
                     KeyCode::Left => {
@@ -374,45 +366,5 @@ impl<'a> App<'a> {
             self.queries.push(content);
             self.message = "Query saved".to_string();
         }
-    }
-
-    pub fn update_dimensions(&mut self, height: u16) {
-        self.workspace.update_dimensions(height);
-    }
-
-    fn handle_collection_selection(&mut self) -> Result<()> {
-        let selected = self.collection_state.selected();
-        if selected.is_empty() {
-            return Ok(());
-        }
-
-        let path = selected.iter().map(|s| s.as_str()).collect::<Vec<_>>();
-        if path.len() < 2 {
-            return Ok(());
-        }
-            
-        let collection_name = path[0];
-        let file_name = path[path.len() - 1];
-
-        if !file_name.ends_with(".sql") {
-            return Ok(());
-        }
-            
-        match crate::collection::load_sql_content(collection_name, file_name) {
-            Ok(content) => {
-                self.workspace.clear();
-                self.workspace.insert_str(&content);
-                
-                // Switch to workspace edit mode
-                self.focus = Focus::WorkspaceEdit;
-                self.current_tab = Tab::Workspace;
-                
-                self.message = format!("Loaded {}/{}", collection_name, file_name);
-            },
-            Err(err) => {
-                self.message = format!("Error loading SQL file: {}", err);
-            },
-        }
-        return Ok(());
     }
 }
