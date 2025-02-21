@@ -2,6 +2,7 @@ mod app;
 mod event;
 pub mod run;
 mod searchable_textarea;
+mod traits;
 mod ui;
 
 mod collections_pane;

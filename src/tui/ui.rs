@@ -1,3 +1,5 @@
+use anyhow::Result;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style, Stylize},
@@ -7,10 +9,7 @@ use ratatui::{
 };
 
 use super::{
-    app::{App, Focus, Mode},
-    collections_pane::CollectionsPane,
-    results_pane::ResultsPane,
-    workspace_pane::WorkspacePane,
+    app::{App, Focus, Mode}, collections_pane::CollectionsPane, results_pane::ResultsPane, traits::{Instructions, PaneEventHandler}, workspace_pane::WorkspacePane
 };
 
 pub struct UI {
@@ -26,6 +25,10 @@ impl UI {
             workspace_pane: WorkspacePane::new(),
             results_pane: ResultsPane::new(),
         }
+    }
+
+    pub fn update_dimensions(&self, app: &mut App, height: u16) {
+        self.workspace_pane.update_dimensions(app, height);
     }
 
     pub fn render(&self, app: &mut App, frame: &mut Frame) {
@@ -94,70 +97,13 @@ impl UI {
         frame.render_widget(title, chunks[0]);
     }
 
-    fn render_instructions(&self, app: &mut App, frame: &mut Frame, area: Rect) {
+    pub fn render_instructions(&self, app: &App, frame: &mut Frame, area: Rect) {
         let instructions = match app.mode {
             Mode::Normal => {
                 match app.focus {
-                    Focus::Collections => {
-                        Line::from(vec![
-                            " ↑/↓ ".blue().bold(),
-                            "Navigate ".white().into(),
-                            " ←/→ ".blue().bold(),
-                            "Collapse/Expand ".white().into(),
-                            " Space ".blue().bold(),
-                            "Select ".white().into(),
-                            " Tab ".blue().bold(),
-                            "Switch Panel ".white().into(),
-                            " ^P ".blue().bold(),
-                            "Command ".white().into(),
-                            " ^C ".blue().bold(),
-                            "Quit ".white().into(),
-                        ])
-                    },
-                    Focus::Workspace => {
-                        Line::from(vec![
-                            " Tab ".blue().bold(),
-                            "Switch Panel ".white().into(),
-                            " Space ".blue().bold(),
-                            "Edit ".white().into(),
-                            " ^F ".blue().bold(),
-                            "Find ".white().into(),
-                            " ^R ".blue().bold(),
-                            "Replace ".white().into(),
-                            " ^P ".blue().bold(),
-                            "Command ".white().into(),
-                            " ^C ".blue().bold(),
-                            "Quit ".white().into(),
-                        ])
-                    },
-                    Focus::WorkspaceEdit => {
-                        Line::from(vec![
-                            " Esc ".blue().bold(),
-                            "Stop Editing ".white().into(),
-                            " ^S ".blue().bold(),
-                            "Save ".white().into(),
-                            " ^F ".blue().bold(),
-                            "Find ".white().into(),
-                            " ^R ".blue().bold(),
-                            "Replace ".white().into(),
-                            " ^P ".blue().bold(),
-                            "Command ".white().into(),
-                            " ^C ".blue().bold(),
-                            "Quit ".white().into(),
-                        ])
-                    },
-                    Focus::Result => {
-                        Line::from(vec![
-                            " Tab ".blue().bold(),
-                            "Switch Panel ".white().into(),
-                            " Space ".blue().bold(),
-                            "Select ".white().into(),
-                            " ^P ".blue().bold(),
-                            "Command ".white().into(),
-                            " ^C ".blue().bold(),
-                            "Quit ".white().into(),
-                        ])
-                    }
+                    Focus::Collections => self.collections_pane.get_instructions(app),
+                    Focus::Workspace | Focus::WorkspaceEdit => self.workspace_pane.get_instructions(app),
+                    Focus::Result => self.results_pane.get_instructions(app),
                 }
             },
             Mode::Command => Line::from(vec![
@@ -168,35 +114,7 @@ impl UI {
                 " ^C ".blue().bold(),
                 "Quit ".white().into(),
             ]),
-            Mode::Search => {
-                if app.search.replace_mode {
-                    Line::from(vec![
-                        " ESC ".blue().bold(),
-                        "Cancel ".white().into(),
-                        " Enter ".blue().bold(),
-                        "Replace ".white().into(),
-                        " ^N ".blue().bold(),
-                        "Next ".white().into(),
-                        " ^P ".blue().bold(),
-                        "Previous ".white().into(),
-                        " ^C ".blue().bold(),
-                        "Quit ".white().into(),
-                    ])
-                } else {
-                    Line::from(vec![
-                        " ESC ".blue().bold(),
-                        "Cancel ".white().into(),
-                        " Enter ".blue().bold(),
-                        "Find ".white().into(),
-                        " ^N ".blue().bold(),
-                        "Next ".white().into(),
-                        " ^P ".blue().bold(),
-                        "Previous ".white().into(),
-                        " ^C ".blue().bold(),
-                        "Quit ".white().into(),
-                    ])
-                }
-            }
+            Mode::Search => self.workspace_pane.get_instructions(app),
         };
         
         let status = Paragraph::new(instructions)
@@ -205,8 +123,75 @@ impl UI {
         
         frame.render_widget(status, area);
     }
-    
-    pub fn update_dimensions(&self, app: &mut App, height: u16) {
-        self.workspace_pane.update_dimensions(app, height);
+
+    pub fn handle_key_event(&self, app: &mut App, key_event: KeyEvent) -> Result<bool> {
+        // Handle global key events first
+        match (key_event.code, key_event.modifiers) {
+            (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
+                app.should_quit = true;
+                return Ok(true);
+            }
+            (KeyCode::Tab, _) if app.focus != Focus::WorkspaceEdit => {
+                app.cycle_tab();
+                return Ok(false);
+            }
+            (KeyCode::Char('p'), KeyModifiers::CONTROL) => {
+                app.mode = Mode::Command;
+                return Ok(false);
+            }
+            _ => {}
+        }
+        
+        match app.focus {
+            Focus::Collections => self.collections_pane.handle_key_event(app, key_event),
+            Focus::Workspace | Focus::WorkspaceEdit => self.workspace_pane.handle_key_event(app, key_event),
+            Focus::Result => self.results_pane.handle_key_event(app, key_event),
+        }
+    }
+
+    pub fn handle_mouse_event(&self, app: &mut App, mouse_event: MouseEvent) -> Result<bool> {
+        use crossterm::event::{MouseEventKind, MouseButton};
+        
+        if let MouseEventKind::Down(MouseButton::Left) = mouse_event.kind {
+            let terminal_size = crossterm::terminal::size().unwrap_or((80, 24));
+            let width = terminal_size.0 as usize;
+            let height = terminal_size.1 as usize;
+            
+            let x = mouse_event.column as usize;
+            let y = mouse_event.row as usize;
+            
+            if y > 1 && y < height - 3 { // Main content area
+                if x < width * 15 / 100 {
+                    // Left panel - Collections
+                    app.select_tab(super::app::Tab::Collections);
+                } else {
+                    let content_height = height - 5;
+                    if y < 1 + (content_height * 70 / 100) {
+                        // Top-right - Workspace
+                        app.select_tab(super::app::Tab::Workspace);
+                        
+                        if app.focus == Focus::Workspace {
+                            app.focus = Focus::WorkspaceEdit;
+                        }
+                    } else {
+                        // Bottom-right - Results
+                        app.select_tab(super::app::Tab::Result);
+                    }
+                }
+                
+                match app.focus {
+                    Focus::Collections => return self.collections_pane.handle_mouse_event(app, mouse_event),
+                    Focus::Workspace | Focus::WorkspaceEdit => return self.workspace_pane.handle_mouse_event(app, mouse_event),
+                    Focus::Result => return self.results_pane.handle_mouse_event(app, mouse_event),
+                }
+            }
+        }
+        
+        // If not handled by focus selection, delegate based on current focus
+        match app.focus {
+            Focus::Collections => self.collections_pane.handle_mouse_event(app, mouse_event),
+            Focus::Workspace | Focus::WorkspaceEdit => self.workspace_pane.handle_mouse_event(app, mouse_event),
+            Focus::Result => self.results_pane.handle_mouse_event(app, mouse_event),
+        }
     }
 }

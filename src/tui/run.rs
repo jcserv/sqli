@@ -54,12 +54,12 @@ fn run_app(
         match events.next()? {
             Event::Tick => app.tick(),
             Event::Key(key_event) => {
-                if app.handle_key(key_event)? {
+                if app.handle_key(ui, key_event)? {
                     return Ok(());
                 }
             }
             Event::Mouse(mouse_event) => {
-                if app.handle_mouse(mouse_event)? {
+                if app.handle_mouse(ui, mouse_event)? {
                     return Ok(());
                 }
             }

@@ -7,6 +7,7 @@ use tui_textarea::{TextArea, Input, Key};
 use tui_tree_widget::{TreeItem, TreeState};
 
 use super::searchable_textarea::SearchableTextArea;
+use super::ui::UI;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Mode {
@@ -91,51 +92,55 @@ impl<'a> App<'a> {
         // Update any app state that needs to change every tick
     }
 
-    pub fn handle_key(&mut self, key_event: KeyEvent) -> Result<bool> {
+    pub fn handle_key(&mut self, ui: &UI, key_event: KeyEvent) -> Result<bool> {
         match self.mode {
-            Mode::Normal => self.handle_normal_mode(key_event),
+            Mode::Normal => ui.handle_key_event(self, key_event),
             Mode::Command => self.handle_command_mode(key_event),
             Mode::Search => self.handle_search_mode(key_event),
         }
     }
 
-    pub fn handle_mouse(&mut self, mouse_event: MouseEvent) -> Result<bool> {
-        use crossterm::event::{MouseEventKind, MouseButton};
-        
-        match mouse_event.kind {
-            MouseEventKind::Down(MouseButton::Left) => {
-                let terminal_size = crossterm::terminal::size().unwrap_or((80, 24));
-                let width = terminal_size.0 as usize;
-                let height = terminal_size.1 as usize;
-                
-                let x = mouse_event.column as usize;
-                let y = mouse_event.row as usize;
-                
-                if y > 1 && y < height - 3 { // Main content area
-                    if x < width / 10 {
-                        // Left panel - Collections
-                        self.select_tab(Tab::Collections);
-                    } else {
-                        let content_height = height - 5;
-                        if y < content_height * 7 / 10 + 2 {
-                            // Top-right - Workspace
-                            self.select_tab(Tab::Workspace);
-                            
-                            if self.focus == Focus::Workspace {
-                                self.focus = Focus::WorkspaceEdit;
-                            }
-                        } else {
-                            // Bottom-right - Results
-                            self.select_tab(Tab::Result);
-                        }
-                    }
-                }
-                
-                Ok(false)
-            },
-            _ => Ok(false),
-        }
+    pub fn handle_mouse(&mut self, ui: &UI, mouse_event: MouseEvent) -> Result<bool> {
+        ui.handle_mouse_event(self, mouse_event)
     }
+
+    // pub fn handle_mouse(&mut self, mouse_event: MouseEvent) -> Result<bool> {
+    //     use crossterm::event::{MouseEventKind, MouseButton};
+        
+    //     match mouse_event.kind {
+    //         MouseEventKind::Down(MouseButton::Left) => {
+    //             let terminal_size = crossterm::terminal::size().unwrap_or((80, 24));
+    //             let width = terminal_size.0 as usize;
+    //             let height = terminal_size.1 as usize;
+                
+    //             let x = mouse_event.column as usize;
+    //             let y = mouse_event.row as usize;
+                
+    //             if y > 1 && y < height - 3 { // Main content area
+    //                 if x < width / 10 {
+    //                     // Left panel - Collections
+    //                     self.select_tab(Tab::Collections);
+    //                 } else {
+    //                     let content_height = height - 5;
+    //                     if y < content_height * 7 / 10 + 2 {
+    //                         // Top-right - Workspace
+    //                         self.select_tab(Tab::Workspace);
+                            
+    //                         if self.focus == Focus::Workspace {
+    //                             self.focus = Focus::WorkspaceEdit;
+    //                         }
+    //                     } else {
+    //                         // Bottom-right - Results
+    //                         self.select_tab(Tab::Result);
+    //                     }
+    //                 }
+    //             }
+                
+    //             Ok(false)
+    //         },
+    //         _ => Ok(false),
+    //     }
+    // }
 
     fn handle_normal_mode(&mut self, key_event: KeyEvent) -> Result<bool> {
         // Global key bindings
@@ -329,7 +334,7 @@ impl<'a> App<'a> {
         }
     }
 
-    fn select_tab(&mut self, tab: Tab) {
+    pub fn select_tab(&mut self, tab: Tab) {
         self.current_tab = tab;
         self.focus = match tab {
             Tab::Collections => Focus::Collections,
@@ -338,7 +343,7 @@ impl<'a> App<'a> {
         };
     }
 
-    fn cycle_tab(&mut self) {
+    pub fn cycle_tab(&mut self) {
         match self.current_tab {
             Tab::Collections => self.select_tab(Tab::Workspace),
             Tab::Workspace => self.select_tab(Tab::Result),

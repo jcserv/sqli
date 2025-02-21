@@ -1,13 +1,17 @@
+use anyhow::Result;
+use crossterm::event::{KeyCode, KeyEvent, MouseEvent};
 use ratatui::{
-    layout::Rect,
-    style::{Color, Style},
-    widgets::{Block, Borders, Scrollbar, ScrollbarOrientation},
+    prelude::*,
     Frame,
+    layout::Rect, 
+    style::{Color, Style}, 
+    text::Line, 
+    widgets::{Block, Borders, Scrollbar, ScrollbarOrientation},
 };
 use tui_tree_widget::Tree;
 
 use crate::collection::{build_collection_tree, load_collections, load_sql_content};
-use super::app::{App, Focus};
+use super::{app::{App, Focus, Mode}, traits::{Instructions, PaneEventHandler}};
 
 pub struct CollectionsPane;
 
@@ -46,7 +50,6 @@ impl CollectionsPane {
                     .end_symbol(None)
             ));
 
-        // Render the tree as a stateful widget
         frame.render_stateful_widget(tree, area, &mut app.collection_state);
     }
 
@@ -94,5 +97,67 @@ impl CollectionsPane {
             },
         }
         return Ok(());
+    }
+}
+
+impl Instructions for CollectionsPane {
+    fn get_instructions(&self, app: &App) -> Line {
+        match app.mode {
+            Mode::Normal => {
+                Line::from(vec![
+                    " ↑/↓ ".blue().bold(),
+                    "Navigate ".white().into(),
+                    " ←/→ ".blue().bold(),
+                    "Collapse/Expand ".white().into(),
+                    " Space ".blue().bold(),
+                    "Select ".white().into(),
+                    " Tab ".blue().bold(),
+                    "Switch Panel ".white().into(),
+                    " ^P ".blue().bold(),
+                    "Command ".white().into(),
+                    " ^C ".blue().bold(),
+                    "Quit ".white().into(),
+                ])
+            },
+            _ => Line::from(""),
+        }
+    }
+}
+
+impl PaneEventHandler for CollectionsPane {
+    fn handle_key_event(&self, app: &mut App, key_event: KeyEvent) -> Result<bool> {
+        if app.focus != Focus::Collections || app.mode != Mode::Normal {
+            return Ok(false);
+        }
+        
+        match key_event.code {
+            KeyCode::Enter | KeyCode::Char(' ') => {
+                app.collection_state.toggle_selected();
+                self.handle_selection(app)?;
+                Ok(false)
+            },
+            KeyCode::Left => {
+                app.collection_state.key_left();
+                Ok(false)
+            },
+            KeyCode::Right => {
+                app.collection_state.key_right();
+                Ok(false)
+            },
+            KeyCode::Down => {
+                app.collection_state.key_down();
+                Ok(false)
+            },
+            KeyCode::Up => {
+                app.collection_state.key_up();
+                Ok(false)
+            },
+            _ => Ok(false)
+        }
+    }
+    
+    fn handle_mouse_event(&self, _app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
+        // Implement mouse handling for collections pane
+        Ok(false)
     }
 }
