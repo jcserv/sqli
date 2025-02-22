@@ -5,11 +5,13 @@ use ratatui::widgets::Borders;
 use tui_textarea::TextArea;
 use tui_tree_widget::{TreeItem, TreeState};
 
+use crate::config::ConfigManager;
 use crate::query::execute_query;
 use crate::sql::interface::QueryResult;
 
 use super::navigation::{NavigationManager, PaneId};
 use super::ui::UI;
+use super::widgets::password_modal::PasswordModal;
 use super::widgets::searchable_textarea::SearchableTextArea;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -17,6 +19,7 @@ pub enum Mode {
     Normal,
     Command,
     Search,
+    Password,
 }
 
 pub struct SearchBox<'a> {
@@ -87,6 +90,7 @@ pub struct App<'a> {
     pub workspace: SearchableTextArea<'a>,
     pub search: SearchBox<'a>,
     pub query_result: QueryResult,
+    pub password_modal: Option<PasswordModal<'a>>,
 
     pub should_quit: bool,
 }
@@ -119,6 +123,7 @@ impl<'a> App<'a> {
             workspace,
             search: SearchBox::default(),
             query_result: QueryResult::default(), 
+            password_modal: None,
             should_quit: false,
         }
     }
@@ -236,7 +241,29 @@ impl<'a> App<'a> {
                 return Ok(false);
             }
             _ => {
-                return ui.handle_key_event(self, key_event);
+                match self.mode {
+                    Mode::Password => {
+                        match key_event.code {
+                            KeyCode::Enter => {
+                                self.handle_password_submit();
+                                Ok(false)
+                            }
+                            KeyCode::Esc => {
+                                self.close_password_prompt();
+                                Ok(false)
+                            }
+                            _ => {
+                                if let Some(modal) = &mut self.password_modal {
+                                    modal.textarea.input(tui_textarea::Input::from(key_event));
+                                }
+                                Ok(false)
+                            }
+                        }
+                    }
+                    _ => {
+                        return ui.handle_key_event(self, key_event);
+                    }
+                }
             }
         }
     }
@@ -341,7 +368,47 @@ impl<'a> App<'a> {
             // TODO
         }
     }
-    
+
+    pub fn show_password_prompt(&mut self) {
+        self.password_modal = Some(PasswordModal::default());
+        self.mode = Mode::Password;
+    }
+
+    pub fn handle_password_submit(&mut self) {
+        if let Some(password_modal) = &self.password_modal {
+            let password = password_modal.textarea.lines()[0].clone();
+            if let Some(conn_name) = &self.selected_connection {
+                let config_manager = ConfigManager::new().unwrap();
+                if let Ok(Some(mut conn)) = config_manager.get_connection(conn_name) {
+                    conn.password = Some(password);
+                    
+                    let sql = self.workspace.get_content();
+                    let connection = conn.name.clone();
+                    
+                    let handle = tokio::spawn(async move {
+                        match execute_query(sql, None, Some(connection)).await {
+                            Ok(_) => AsyncCommandResult::new(AppCommand::ExecuteQuery),
+                            Err(e) => AsyncCommandResult::with_message(
+                                AppCommand::ExecuteQuery,
+                                format!("Query error: {}", e)
+                            ),
+                        }
+                    });
+                    
+                    self.pending_async_operation = Some(handle);
+                }
+            }
+        }
+        
+        self.password_modal = None;
+        self.mode = Mode::Normal;
+    }
+
+    pub fn close_password_prompt(&mut self) {
+        self.password_modal = None;
+        self.mode = Mode::Normal;
+    }
+
     pub fn is_collections_active(&self) -> bool {
         self.navigation.is_active(PaneId::Collections)
     }
