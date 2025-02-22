@@ -67,14 +67,7 @@ async fn main() -> Result<()> {
             run_tui()?;
         },
         Commands::Query { url, connection, sql } => {
-            let connection_url = if let Some(conn_name) = connection {
-                let conn = config_manager.get_connection(&conn_name)?
-                    .ok_or_else(|| anyhow::anyhow!("Connection {} not found", conn_name))?;
-                conn.to_url()
-            } else {
-                url.ok_or_else(|| anyhow::anyhow!("Either --url or --connection must be provided"))?
-            };
-            run_query(connection_url, sql).await?;
+            run_query(url, connection, sql).await?;
         },
         Commands::Config { action } => {
             match action {

@@ -38,16 +38,20 @@ impl Default for SearchBox<'_> {
 }
 
 pub struct App<'a> {
-    pub mode: Mode,
-    pub navigation: NavigationManager,
-    pub workspace: SearchableTextArea<'a>,
     pub command_input: String,
+    pub mode: Mode,
     pub message: String,
-    pub queries: Vec<String>,
+
+    pub selected_collection: Option<String>,
+
+    pub navigation: NavigationManager,
+
     pub collection_state: TreeState<String>,
     pub collection_items: Vec<TreeItem<'a, String>>,
-    pub should_quit: bool,
+    pub workspace: SearchableTextArea<'a>,
     pub search: SearchBox<'a>,
+
+    pub should_quit: bool,
 }
 
 impl<'a> App<'a> {
@@ -62,18 +66,20 @@ impl<'a> App<'a> {
         navigation.register_pane(PaneId::Collections, 1);
         navigation.register_pane(PaneId::Workspace, 1);
         navigation.register_pane(PaneId::Results, 1);
+
+        let collection = Some("PostgreSQL".to_string());
         
         Self {
-            mode: Mode::Normal,
-            navigation,
-            workspace,
             command_input: String::new(),
+            mode: Mode::Normal,
             message: String::new(),
-            queries: Vec::new(),
+            selected_collection: collection,
+            navigation,
             collection_state: TreeState::default(),
             collection_items,
-            should_quit: false,
+            workspace,
             search: SearchBox::default(),
+            should_quit: false,
         }
     }
 
@@ -170,11 +176,14 @@ impl<'a> App<'a> {
     //     }
     // }
 
+    pub fn execute_query(&mut self) {
+        // TODO
+    }
+
     pub fn save_query(&mut self) {
         let content = self.workspace.get_content();
         if !content.is_empty() {
-            self.queries.push(content);
-            self.message = "Query saved".to_string();
+            // TODO
         }
     }
     
