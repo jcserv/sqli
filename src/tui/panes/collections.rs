@@ -147,7 +147,7 @@ impl Instructions for CollectionsPane {
 }
 
 impl Navigable for CollectionsPane {
-    fn handle_key_event(&self, app: &mut App, key_event: KeyEvent) -> Result<bool> {
+    fn handle_key_event(&mut self, app: &mut App, key_event: KeyEvent) -> Result<bool> {
         if app.mode != Mode::Normal || !app.navigation.is_active(PaneId::Collections) {
             return Ok(false);
         }

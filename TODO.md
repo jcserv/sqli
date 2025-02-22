@@ -14,12 +14,11 @@
   - [ ] pagination
   - [ ] display number of rows, time taken 
 
-- [ ] command palette and keyboard navigation
 - [ ] autocomplete based on tables within a database
 - [ ] syntax highlighting
 - [ ] sql formatting
 - [ ] find/replace
-- [ ] keybind configuration
+- [ ] keybind/theme configuration
 
 widgets:
 - tabs

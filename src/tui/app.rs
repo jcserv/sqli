@@ -5,9 +5,10 @@ use ratatui::widgets::Borders;
 use tui_textarea::TextArea;
 use tui_tree_widget::{TreeItem, TreeState};
 
-use crate::query::run_query;
+use crate::query::QueryResult;
 
 use super::navigation::{NavigationManager, PaneId};
+use super::ui::UI;
 use super::widgets::searchable_textarea::SearchableTextArea;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,6 +53,7 @@ pub struct App<'a> {
     pub collection_items: Vec<TreeItem<'a, String>>,
     pub workspace: SearchableTextArea<'a>,
     pub search: SearchBox<'a>,
+    pub query_result: QueryResult,
 
     pub should_quit: bool,
 }
@@ -81,6 +83,7 @@ impl<'a> App<'a> {
             collection_items,
             workspace,
             search: SearchBox::default(),
+            query_result: QueryResult::default(), 
             should_quit: false,
         }
     }
@@ -89,7 +92,7 @@ impl<'a> App<'a> {
         // Update any app state that needs to change every tick
     }
 
-    pub fn handle_key(&mut self, ui: &super::ui::UI, key_event: KeyEvent) -> anyhow::Result<bool> {
+    pub fn handle_key(&mut self, ui: &mut UI, key_event: KeyEvent) -> anyhow::Result<bool> {
         match (key_event.code, key_event.modifiers) {
             (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
                 self.should_quit = true;
@@ -178,9 +181,27 @@ impl<'a> App<'a> {
     //     }
     // }
 
+    // pub async fn execute_query(&mut self) {
+    //     let content = self.workspace.get_content();
+    //     _ = run_query(content, None, self.selected_collection.clone()).await;
+    // }
+
     pub async fn execute_query(&mut self) {
-        let content = self.workspace.get_content();
-        _ = run_query(content, None, self.selected_collection.clone()).await;
+        // let content = self.workspace.get_content();        
+        let start_time = std::time::Instant::now();
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        let execution_time = start_time.elapsed();
+        
+        let columns = vec!["id".to_string(), "title".to_string(), "author_id".to_string()];
+        let rows = vec![
+            vec!["1".to_string(), "The Martian".to_string(), "1".to_string()],
+            vec!["2".to_string(), "Natural Acts".to_string(), "2".to_string()],
+            vec!["3".to_string(), "Feminism Interrupted".to_string(), "3".to_string()],
+            vec!["4".to_string(), "Project Hail Mary".to_string(), "1".to_string()],
+        ];
+        
+        self.query_result = QueryResult::new(columns, rows, execution_time);
+        self.message = format!("Query executed in {}ms", execution_time.as_millis());
     }
 
     pub fn save_query(&mut self) {

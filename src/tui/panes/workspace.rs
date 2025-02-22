@@ -144,7 +144,7 @@ impl Instructions for WorkspacePane {
 }
 
 impl Navigable for WorkspacePane {    
-    fn handle_key_event(&self, app: &mut App, key_event: KeyEvent) -> Result<bool> {
+    fn handle_key_event(&mut self, app: &mut App, key_event: KeyEvent) -> Result<bool> {
         if !app.navigation.is_active(PaneId::Workspace) {
             return Ok(false);
         }

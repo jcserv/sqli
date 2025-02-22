@@ -119,7 +119,7 @@ impl UI {
         frame.render_widget(status, area);
     }
 
-    pub fn handle_key_event(&self, app: &mut App, key_event: KeyEvent) -> Result<bool> {
+    pub fn handle_key_event(&mut self, app: &mut App, key_event: KeyEvent) -> Result<bool> {
         match app.navigation.active_pane().unwrap() {
             PaneId::Header => self.header_pane.handle_key_event(app, key_event),
             PaneId::Collections => self.collections_pane.handle_key_event(app, key_event),
@@ -141,7 +141,8 @@ impl UI {
             
             if y < 4 {
                 return self.header_pane.handle_mouse_event(app, mouse_event);
-            }            
+            }
+            
             if y > 1 && y < height - 3 {
                 let content_height = height - 5;
                 
