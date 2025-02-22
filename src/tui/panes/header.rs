@@ -58,6 +58,8 @@ impl HeaderPane {
             .border_style(focus_style);
         
         frame.render_widget(&connection_block, conn_area);
+        let connection_name = app.selected_connection.clone().unwrap_or_else(|| "No connection selected".to_string());
+        frame.render_widget(Span::raw(connection_name), connection_block.inner(conn_area));
         self.render_connection_button(frame, connection_block.inner(conn_area));
     }
 
@@ -65,12 +67,12 @@ impl HeaderPane {
         let horizontal = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Min(0),  // Flexible space before
-                Constraint::Length(15),  // Button width
-                Constraint::Min(0),  // Flexible space after
+                Constraint::Min(1), 
+                Constraint::Length(15),
+                Constraint::Length(1),
             ])
             .split(area);
-
+    
         frame.render_widget(
             Button::new("Run Query").theme(BLUE), // .state(self.connect_button_state), 
             horizontal[1]
@@ -128,22 +130,25 @@ impl Navigable for HeaderPane {
     
     fn handle_mouse_event(&self, app: &mut App, mouse_event: MouseEvent) -> Result<bool> {
         use crossterm::event::{MouseEventKind, MouseButton};
-        
+    
         if let MouseEventKind::Down(MouseButton::Left) = mouse_event.kind {
-            if mouse_event.row >= 1 && mouse_event.row <= 3 { 
-                let button_x_start = 15;  
-                let button_x_end = 30;   
-                
+            if mouse_event.row >= 1 && mouse_event.row <= 3 {
+                let terminal_width = crossterm::terminal::size().unwrap_or((80, 24)).0;
+    
+                let button_width = 15;
+                let button_x_start = terminal_width.saturating_sub(button_width + 1);
+                let button_x_end = terminal_width.saturating_sub(2);
+    
                 if mouse_event.column >= button_x_start && mouse_event.column <= button_x_end {
                     app.pending_command = AppCommand::ExecuteQuery;
                     app.message = "Executing query...".to_string();
-                    return Ok(true);
+                    return Ok(false);
                 }
             }
         }
-        
+    
         if app.navigation.is_active(PaneId::Header) {
-            return self.activate(app)
+            return self.activate(app);
         }
         app.navigation.activate_pane(PaneId::Header)?;
         Ok(false)

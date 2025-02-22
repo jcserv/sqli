@@ -49,13 +49,15 @@ impl UI {
             .constraints([
                 Constraint::Length(4),     
                 Constraint::Min(0),        
-                Constraint::Length(3),    
+                Constraint::Length(3),     // Instructions area  
+                Constraint::Length(1),     // Status message area
             ])
             .split(frame.area());
 
         let top_bar = chunks[0];
         let main_area = chunks[1];
-        let status_area = chunks[2];
+        let instructions_area = chunks[2];
+        let status_area = chunks[3];
 
         self.header_pane.render(app, frame, top_bar);
 
@@ -84,7 +86,21 @@ impl UI {
         self.collections_pane.render(app, frame, left_panel);
         self.workspace_pane.render(app, frame, workspace_area, search_height);
         self.results_pane.render(app, frame, results_area);
-        self.render_instructions(app, frame, status_area);
+        self.render_status_message(app, frame, status_area);
+        self.render_instructions(app, frame, instructions_area);
+    }
+
+    fn render_status_message(&self, app: &App, frame: &mut Frame, area: Rect) {
+        let message_style = if app.message.starts_with("Error") {
+            Style::default().fg(Color::Red)
+        } else {
+            Style::default().fg(Color::Green)
+        };
+        
+        let message = Paragraph::new(app.message.as_str())
+            .style(message_style);
+            
+        frame.render_widget(message, area);
     }
 
     pub fn render_instructions(&self, app: &App, frame: &mut Frame, area: Rect) {

@@ -50,6 +50,7 @@ fn run_app(
 
     loop {
         terminal.draw(|frame| ui.render(app, frame))?;
+        app.process_async_results();
 
         match events.next()? {
             Event::Tick => app.tick(),

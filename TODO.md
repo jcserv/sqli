@@ -3,11 +3,15 @@
 ## tui
 - [ ] collections
   - [ ] display user/local
-- [ ] execute query - button & keybind
+- [ ] execute query 
 - [ ] creating a sql file, saving to collection
 - [ ] results pane
   - [ ] pagination
   - [ ] display number of rows, time taken 
+
+### bugs
+- [ ] errors are displayed in the wrong place, leading to the tui getting shifted
+- [ ] password prompt
 
 ## cli
 - [ ] collections

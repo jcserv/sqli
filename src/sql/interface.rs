@@ -15,8 +15,8 @@ pub struct QueryResult {
 impl Default for QueryResult {
     fn default() -> Self {
         Self {
-            columns: [].to_vec(),
-            rows: [].to_vec(),
+            columns: Vec::new(),
+            rows: Vec::new(),
             execution_time: std::time::Duration::from_secs(0),
             row_count: 0,
         }

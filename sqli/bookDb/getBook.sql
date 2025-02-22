@@ -1,1 +1,1 @@
-SELECT * FROM books WHERE id = $1;
+SELECT * FROM book WHERE id = $1;
