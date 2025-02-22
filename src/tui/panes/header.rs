@@ -9,7 +9,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::tui::{app::{App, Mode}, navigation::{FocusType, Navigable, PaneId}};
+use crate::tui::{app::{App, Mode}, navigation::{FocusType, Navigable, PaneId}, widgets::button::{Button, BLUE}};
 use super::traits::Instructions;
 
 pub struct HeaderPane;
@@ -19,7 +19,7 @@ impl HeaderPane {
         Self
     }
 
-    pub fn render(&self, app: &mut App, frame: &mut Frame, area: Rect) {
+    pub fn render(&mut self, app: &mut App, frame: &mut Frame, area: Rect) {
         let focus_type = if let Some(info) = app.navigation.get_pane_info(PaneId::Header) {
             info.focus_type
         } else {
@@ -44,14 +44,7 @@ impl HeaderPane {
         frame.render_widget(title, chunks[0]);
         
         let conn_area = chunks[1];
-        // let conn_chunks = Layout::default()
-        //     .direction(Direction::Horizontal)
-        //     .constraints([
-        //         Constraint::Min(20),        // Connection selector
-        //         Constraint::Length(10),     // Run button
-        //     ])
-        //     .split(conn_area);
-            
+        
         let focus_style = match focus_type {
             FocusType::Editing => Style::default().fg(Color::LightBlue).bold(),
             FocusType::Active => Style::default().fg(Color::LightBlue),
@@ -64,8 +57,24 @@ impl HeaderPane {
             .borders(Borders::ALL)
             .border_style(focus_style);
         
-        // let inner_conn_area = connection_block.inner(conn_area);
-        frame.render_widget(connection_block, conn_area);
+        frame.render_widget(&connection_block, conn_area);
+        self.render_connection_button(frame, connection_block.inner(conn_area));
+    }
+
+    fn render_connection_button(&mut self, frame: &mut Frame<'_>, area: Rect) {
+        let horizontal = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Min(0),  // Flexible space before
+                Constraint::Length(15),  // Button width
+                Constraint::Min(0),  // Flexible space after
+            ])
+            .split(area);
+
+        frame.render_widget(
+            Button::new("Run Query").theme(BLUE), // .state(self.connect_button_state), 
+            horizontal[1]
+        );
     }
 }
 
