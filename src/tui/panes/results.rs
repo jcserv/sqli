@@ -96,8 +96,10 @@ impl Navigable for ResultsPane {
     }
     
     fn handle_mouse_event(&self, app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
-        app.navigation.activate_pane(PaneId::Results)?;        
-        app.navigation.start_editing(PaneId::Results)?;
+        if app.navigation.is_active(PaneId::Results) {
+            return self.activate(app)
+        }
+        app.navigation.activate_pane(PaneId::Results)?;
         Ok(false)
     }
     

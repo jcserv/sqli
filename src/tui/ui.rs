@@ -139,6 +139,9 @@ impl UI {
             let x = mouse_event.column as usize;
             let y = mouse_event.row as usize;
             
+            if y < 4 {
+                return self.header_pane.handle_mouse_event(app, mouse_event);
+            }            
             if y > 1 && y < height - 3 {
                 let content_height = height - 5;
                 
@@ -151,7 +154,6 @@ impl UI {
                 }
             }
         }
-
         Ok(false)
     }
 }

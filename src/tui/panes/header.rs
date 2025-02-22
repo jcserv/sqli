@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crossterm::event::{KeyEvent, MouseEvent};
+use crossterm::event::{KeyCode, KeyEvent, MouseEvent};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     prelude::*,
@@ -9,7 +9,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::tui::{app::App, navigation::{FocusType, Navigable, PaneId}};
+use crate::tui::{app::{App, Mode}, navigation::{FocusType, Navigable, PaneId}};
 use super::traits::Instructions;
 
 pub struct HeaderPane;
@@ -86,11 +86,29 @@ impl Instructions for HeaderPane {
 
 
 impl Navigable for HeaderPane {
-    fn handle_key_event(&self, _app: &mut App, _key_event: KeyEvent) -> Result<bool> {
-        Ok(false)
+    fn handle_key_event(&self, app: &mut App, key_event: KeyEvent) -> Result<bool> {
+        if app.mode != Mode::Normal || !app.navigation.is_active(PaneId::Header) {
+            return Ok(false);
+        }
+        
+        let is_editing = app.is_pane_in_edit_mode(PaneId::Header);
+        
+        match key_event.code {
+            KeyCode::Esc if is_editing => {
+                self.deactivate(app)
+            },
+            KeyCode::Enter | KeyCode::Char(' ') if !is_editing => {
+                self.activate(app)
+            },
+            _ => Ok(false)
+        }
     }
     
-    fn handle_mouse_event(&self, _app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
+    fn handle_mouse_event(&self, app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
+        if app.navigation.is_active(PaneId::Header) {
+            return self.activate(app)
+        }
+        app.navigation.activate_pane(PaneId::Header)?;
         Ok(false)
     }
     
