@@ -131,13 +131,16 @@ impl Navigable for HeaderPane {
         
         if let MouseEventKind::Down(MouseButton::Left) = mouse_event.kind {
             if mouse_event.row >= 1 && mouse_event.row <= 3 { 
-                let button_x_start = 15;  
-                let button_x_end = 30;   
+                let terminal_width = crossterm::terminal::size().unwrap_or((80, 24)).0;
+                
+                let button_center = terminal_width / 2;
+                let button_x_start = button_center.saturating_sub(7);
+                let button_x_end = button_center.saturating_add(7);
                 
                 if mouse_event.column >= button_x_start && mouse_event.column <= button_x_end {
                     app.pending_command = AppCommand::ExecuteQuery;
                     app.message = "Executing query...".to_string();
-                    return Ok(true);
+                    return Ok(false);
                 }
             }
         }

@@ -51,9 +51,11 @@ pub struct App<'a> {
     pub command_input: String,
     pub mode: Mode,
     pub message: String,
-    pub pending_command: AppCommand,
 
-    pub selected_collection: Option<String>,
+    pub pending_command: AppCommand,
+    pub pending_async_operation: Option<tokio::task::JoinHandle<AppCommand>>,
+
+    pub selected_connection: Option<String>,
 
     pub navigation: NavigationManager,
 
@@ -79,14 +81,15 @@ impl<'a> App<'a> {
         navigation.register_pane(PaneId::Workspace, 1);
         navigation.register_pane(PaneId::Results, 1);
 
-        let collection = Some("PostgreSQL".to_string());
+        let connection = Some("PostgreSQL".to_string());
         
         Self {
             command_input: String::new(),
             mode: Mode::Normal,
             message: String::new(),
             pending_command: AppCommand::None,
-            selected_collection: collection,
+            pending_async_operation: None,
+            selected_connection: connection,
             navigation,
             collection_state: TreeState::default(),
             collection_items,
@@ -97,22 +100,57 @@ impl<'a> App<'a> {
         }
     }
 
-    pub fn tick(&mut self) {
-        if self.pending_command != AppCommand::None {
-            let runtime = tokio::runtime::Handle::current();
-            runtime.block_on(async {
-                match self.pending_command {
-                    AppCommand::ExecuteQuery => {
-                        self.execute_query().await;
+    pub fn process_async_results(&mut self) {
+        if let Some(handle) = &mut self.pending_async_operation {
+            if handle.is_finished() {
+                let handle = std::mem::take(&mut self.pending_async_operation).unwrap();
+                
+                match tokio::task::block_in_place(|| futures::executor::block_on(async {
+                    handle.await
+                })) {
+                    Ok(AppCommand::ExecuteQuery) => {
+                        let sql = self.workspace.get_content();
+                        
+                        match &self.selected_connection {
+                            Some(connection_name) => {
+                                self.message = format!("Query executed for connection: {}", connection_name);
+                            },
+                            None => {
+                                self.message = "No connection selected".to_string();
+                            }
+                        }
                     },
-                    AppCommand::SaveQuery => {
+                    Ok(AppCommand::SaveQuery) => {
                         self.save_query();
                     },
-                    AppCommand::None => {},
+                    Ok(AppCommand::None) => {},
+                    Err(e) => {
+                        self.message = format!("Error in async operation: {}", e);
+                    },
                 }
+            }
+        }
+    }
+
+    pub fn tick(&mut self) {
+        if self.pending_command != AppCommand::None {
+            match self.pending_command {
+                AppCommand::ExecuteQuery => {
+                    self.message = "Executing query...".to_string();
+                },
+                AppCommand::SaveQuery => {
+                    self.message = "Saving query...".to_string();
+                },
+                AppCommand::None => {},
+            }
+            
+            let command = std::mem::replace(&mut self.pending_command, AppCommand::None);
+            
+            let handle = tokio::spawn(async move {
+                command
             });
             
-            self.pending_command = AppCommand::None;
+            self.pending_async_operation = Some(handle);
         }
     }
 
@@ -208,7 +246,7 @@ impl<'a> App<'a> {
     pub async fn execute_query(&mut self) {
         let sql = self.workspace.get_content();
         
-        let result = match &self.selected_collection {
+        let result = match &self.selected_connection {
             Some(connection_name) => {
                 crate::query::execute_query(sql, None, Some(connection_name.clone())).await
             },
