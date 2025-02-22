@@ -67,7 +67,7 @@ async fn main() -> Result<()> {
             run_tui()?;
         },
         Commands::Query { url, connection, sql } => {
-            run_query(url, connection, sql).await?;
+            run_query(sql, url, connection, ).await?;
         },
         Commands::Config { action } => {
             match action {

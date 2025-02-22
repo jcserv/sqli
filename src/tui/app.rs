@@ -5,6 +5,8 @@ use ratatui::widgets::Borders;
 use tui_textarea::TextArea;
 use tui_tree_widget::{TreeItem, TreeState};
 
+use crate::query::run_query;
+
 use super::navigation::{NavigationManager, PaneId};
 use super::widgets::searchable_textarea::SearchableTextArea;
 
@@ -176,8 +178,9 @@ impl<'a> App<'a> {
     //     }
     // }
 
-    pub fn execute_query(&mut self) {
-        // TODO
+    pub async fn execute_query(&mut self) {
+        let content = self.workspace.get_content();
+        _ = run_query(content, None, self.selected_collection.clone()).await;
     }
 
     pub fn save_query(&mut self) {

@@ -8,7 +8,7 @@ use crate::{
 };
 
 /// Runs a SQL query with either a direct URL or a named connection from config
-pub async fn run_query(url: Option<String>, connection: Option<String>, sql: String) -> Result<()> {
+pub async fn run_query(sql: String, url: Option<String>, connection: Option<String>) -> Result<()> {
     let connection_url = get_connection_url(url, connection).await?;
     
     let sql_content = if Path::new(&sql).exists() && sql.ends_with(".sql") {
