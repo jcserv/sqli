@@ -2,12 +2,17 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-use crate::file;
+use crate::{file, sql::interface::{get_sql_type, SQLType}};
 
-pub async fn run_config_add(config_manager: &mut ConfigManager, name: String, conn_type: String, host: String, port: u16, database: String, user: String, password: Option<String>) -> Result<()> {
+pub async fn run_config_set(config_manager: &mut ConfigManager, name: String, conn: String, 
+    host: String, port: u16, database: String, user: String, password: Option<String>) -> Result<()> {
+    let c = get_sql_type(&conn).ok_or_else(|| {
+        anyhow::anyhow!("Unsupported SQL type: '{}'. Supported types: postgresql", conn)
+    })?;
+
     let connection = Connection {
         name,
-        conn_type,
+        conn: c,
         host,
         port,
         database,
@@ -26,7 +31,7 @@ pub async fn run_config_list(config_manager: &mut ConfigManager) -> Result<()> {
     let connections = config_manager.list_connections()?;
 
     if connections.is_empty() {
-        println!("No connections configured. Try running `sqli config add` to add a new connection.");
+        println!("No connections configured. Try running `sqli config set` to configure a new connection.");
         return Ok(());
     }
 
@@ -40,7 +45,7 @@ pub async fn run_config_list(config_manager: &mut ConfigManager) -> Result<()> {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Connection {
     pub name: String,
-    pub conn_type: String,
+    pub conn: SQLType,
     pub host: String,
     pub port: u16,
     pub database: String,
@@ -72,7 +77,7 @@ impl Connection {
 
         format!(
             "{}://{}:{}@{}:{}/{}",
-            self.conn_type, self.user, password, self.host, self.port, self.database
+            self.conn, self.user, password, self.host, self.port, self.database
         )
     }
 }
@@ -89,7 +94,6 @@ impl ConfigManager {
 
     pub fn load_config(&self) -> Result<Config> {
         let config_path = self.config_dir.join("connections.yaml");
-        
         if !config_path.exists() {
             return Ok(Config { connections: Vec::new() });
         }
@@ -123,6 +127,7 @@ impl ConfigManager {
 
     pub fn get_connection(&self, name: &str) -> Result<Option<Connection>> {
         let config = self.load_config()?;
+        println!("Loaded config");
         Ok(config.connections.into_iter().find(|c| c.name == name))
     }
 

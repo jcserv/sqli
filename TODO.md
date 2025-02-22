@@ -3,7 +3,7 @@
 ## tui
 - [ ] collections
   - [ ] display user/local
-- [ ] execute query 
+- [X] execute query 
 - [ ] creating a sql file, saving to collection
 - [ ] results pane
   - [ ] pagination

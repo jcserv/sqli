@@ -1,0 +1,23 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "type": "lldb",
+        "request": "launch",
+        "name": "Run CLI",
+        "cargo": {
+          "args": ["build", "--bin=sqli", "--package=sqli"],
+          "filter": {
+            "name": "sqli",
+            "kind": "bin"
+          }
+        },
+        "args": [
+            "config",
+            "list"
+        ],
+        "cwd": "${workspaceFolder}"
+      },
+    ],
+  }
+  
