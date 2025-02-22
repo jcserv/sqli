@@ -10,7 +10,7 @@
   - [ ] display number of rows, time taken 
 
 ### bugs
-- [ ] errors are displayed in the wrong place, leading to the tui getting shifted
+- [X] errors are displayed in the wrong place, leading to the tui getting shifted
 - [ ] password prompt
 
 ## cli

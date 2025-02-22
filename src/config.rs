@@ -127,7 +127,6 @@ impl ConfigManager {
 
     pub fn get_connection(&self, name: &str) -> Result<Option<Connection>> {
         let config = self.load_config()?;
-        println!("Loaded config");
         Ok(config.connections.into_iter().find(|c| c.name == name))
     }
 
