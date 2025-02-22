@@ -24,7 +24,7 @@ enum Commands {
         #[arg(short, long, help = "The database connection string to connect to")]
         url: Option<String>,
         #[arg(short, long, help = "The connection name from config")]
-        connection: Option<String>,
+        conn: Option<String>,
         #[arg(short, long, help = "The SQL statement(s) to execute")]
         sql: String,
 
@@ -72,8 +72,8 @@ async fn main() -> Result<()> {
         Commands::Tui => {
             run_tui()?;
         },
-        Commands::Query { url, connection, sql } => {
-            run_query(sql, url, connection, ).await?;
+        Commands::Query { url, conn, sql } => {
+            run_query(sql, url, conn, ).await?;
         },
         Commands::Config { action } => {
             match action {

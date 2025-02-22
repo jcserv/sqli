@@ -71,8 +71,7 @@ impl Connection {
     pub fn to_url(&self) -> String {
         let password = match &self.password {
             Some(pwd) => pwd.clone(),
-            None => rpassword::prompt_password("Enter database password: ")
-                .expect("Failed to read password"),
+            None => return "".to_string(),
         };
 
         format!(

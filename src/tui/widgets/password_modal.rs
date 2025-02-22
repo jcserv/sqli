@@ -1,11 +1,9 @@
-// In src/tui/widgets/password_modal.rs
-
 use ratatui::{
     prelude::*,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::Line,
-    widgets::{Block, Borders, Clear, Paragraph},
+    widgets::{Block, Borders, Paragraph},
     Frame,
 };
 use tui_textarea::TextArea;
@@ -18,11 +16,14 @@ pub struct PasswordModal<'a> {
 impl<'a> Default for PasswordModal<'a> {
     fn default() -> Self {
         let mut textarea = TextArea::default();
+        textarea.set_style(Style::default().bg(Color::Black));
         textarea.set_block(
             Block::default()
                 .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::LightBlue))
                 .title("Password")
         );
+        textarea.set_mask_char('*');
         Self {
             textarea,
             error: None,
@@ -32,21 +33,26 @@ impl<'a> Default for PasswordModal<'a> {
 
 impl<'a> PasswordModal<'a> {
     pub fn render(&mut self, frame: &mut Frame, area: Rect) {
-        let popup_area = centered_rect(60, 12, area);
+        frame.render_widget(
+            Block::default().style(Style::default().bg(Color::Black).fg(Color::Gray)),
+            area,
+        );
         
-        frame.render_widget(Clear, popup_area);
+        let modal_area = centered_rect(40, 12, area);
         
-        let block = Block::default()
+        let modal_block = Block::default()
             .title("Enter Password")
             .title_alignment(Alignment::Center)
             .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::LightBlue))
             .style(Style::default().bg(Color::DarkGray));
             
-        frame.render_widget(block.clone(), popup_area);
-        let inner_area = block.inner(popup_area);
+        frame.render_widget(modal_block.clone(), modal_area);
         
+        let inner_area = modal_block.inner(modal_area);
         let chunks = Layout::default()
             .direction(Direction::Vertical)
+            .margin(1)
             .constraints([
                 Constraint::Length(3), // Password input
                 Constraint::Length(1), // Error message
@@ -58,14 +64,10 @@ impl<'a> PasswordModal<'a> {
         frame.render_widget(&self.textarea, chunks[0]);
         
         if let Some(error) = &self.error {
-            let err_msg = format!(
-                "Error: {}",
-                error,
-            );
+            let err_msg = format!("Error: {}", error);
             frame.render_widget(
-                Paragraph::new(Line::from(vec![
-                    err_msg.red().bold(),
-                ])),
+                Paragraph::new(Line::from(vec![err_msg.red().bold()]))
+                    .alignment(Alignment::Center),
                 chunks[1],
             );
         }
@@ -73,23 +75,30 @@ impl<'a> PasswordModal<'a> {
         let button_layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Percentage(50),
-                Constraint::Percentage(50),
+                Constraint::Percentage(35),
+                Constraint::Length(10),
+                Constraint::Length(2),
+                Constraint::Length(10),
+                Constraint::Percentage(35),
             ])
             .split(chunks[3]);
             
         frame.render_widget(
-            Paragraph::new("[ Cancel ]")
-                .alignment(Alignment::Center)
-                .style(Style::default().fg(Color::Red)),
-            button_layout[0],
+            Block::default()
+                .title("Cancel")
+                .title_alignment(Alignment::Center)
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Red)),
+            button_layout[1],
         );
         
         frame.render_widget(
-            Paragraph::new("[ Submit ]")
-                .alignment(Alignment::Center)
-                .style(Style::default().fg(Color::Green)),
-            button_layout[1],
+            Block::default()
+                .title("Submit")
+                .title_alignment(Alignment::Center)
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Green)),
+            button_layout[3],
         );
     }
 }
