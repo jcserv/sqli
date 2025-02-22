@@ -252,7 +252,7 @@ impl<'a> App<'a> {
         if let Some(conn_name) = &self.selected_connection {
             match query::get_connection(conn_name) {
                 Ok(Some(conn)) => {
-                    if query::requires_password(&conn) {
+                    if conn.requires_password() {
                         self.show_password_prompt();
                         return;
                     }

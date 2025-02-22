@@ -79,6 +79,10 @@ impl Connection {
             self.conn, self.user, password, self.host, self.port, self.database
         )
     }
+
+    pub fn requires_password(&self) -> bool {
+        self.password.is_none()
+    }
 }
 
 pub struct ConfigManager {
