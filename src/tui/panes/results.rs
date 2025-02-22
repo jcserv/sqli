@@ -9,7 +9,7 @@ use ratatui::{
     widgets::{Block, Borders, Cell, Row, Scrollbar, ScrollbarState, ScrollbarOrientation, Table, TableState}, 
 };
 
-use crate::{query::QueryResult, tui::app::{App, Mode}};
+use crate::{sql::interface::QueryResult, tui::app::{App, Mode}};
 use crate::tui::navigation::{Navigable, PaneId, FocusType};
 use super::traits::Instructions;
 

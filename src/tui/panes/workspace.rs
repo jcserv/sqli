@@ -9,7 +9,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::tui::app::{App, Mode};
+use crate::tui::app::{App, AppCommand, Mode};
 use crate::tui::navigation::{Navigable, PaneId, FocusType};
 use super::traits::Instructions;
 
@@ -176,6 +176,13 @@ impl Navigable for WorkspacePane {
                             app.search.textarea.delete_line_by_head();
                             Ok(false)
                         }
+                        KeyCode::Enter | KeyCode::Char(' ') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                            app.pending_command = AppCommand::ExecuteQuery;
+                            app.message = "Executing query...".to_string();
+                            
+                            self.deactivate(app)?;
+                            Ok(false)
+                        },
                         _ => {
                             // Forward all other keys to the text area
                             let input = tui_textarea::Input::from(key_event);

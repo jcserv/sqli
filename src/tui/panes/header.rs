@@ -9,7 +9,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::tui::{app::{App, Mode}, navigation::{FocusType, Navigable, PaneId}, widgets::button::{Button, BLUE}};
+use crate::tui::{app::{App, AppCommand, Mode}, navigation::{FocusType, Navigable, PaneId}, widgets::button::{Button, BLUE}};
 use super::traits::Instructions;
 
 pub struct HeaderPane;
@@ -126,7 +126,22 @@ impl Navigable for HeaderPane {
         }
     }
     
-    fn handle_mouse_event(&self, app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
+    fn handle_mouse_event(&self, app: &mut App, mouse_event: MouseEvent) -> Result<bool> {
+        use crossterm::event::{MouseEventKind, MouseButton};
+        
+        if let MouseEventKind::Down(MouseButton::Left) = mouse_event.kind {
+            if mouse_event.row >= 1 && mouse_event.row <= 3 { 
+                let button_x_start = 15;  
+                let button_x_end = 30;   
+                
+                if mouse_event.column >= button_x_start && mouse_event.column <= button_x_end {
+                    app.pending_command = AppCommand::ExecuteQuery;
+                    app.message = "Executing query...".to_string();
+                    return Ok(true);
+                }
+            }
+        }
+        
         if app.navigation.is_active(PaneId::Header) {
             return self.activate(app)
         }
