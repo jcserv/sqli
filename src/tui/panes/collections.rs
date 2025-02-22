@@ -153,13 +153,20 @@ impl Navigable for CollectionsPane {
         }
         
         let info = app.navigation.get_pane_info(PaneId::Collections).unwrap();
-        
         match info.focus_type {
             FocusType::Active => {
                 match key_event.code {
                     KeyCode::Enter | KeyCode::Char(' ') => {
                         self.activate(app)
                     },
+                    KeyCode::Up => {
+                        app.navigation.activate_pane(PaneId::Header)?;
+                        Ok(false)
+                    },
+                    KeyCode::Right => {
+                        app.navigation.activate_pane(PaneId::Workspace)?;
+                        Ok(false)
+                    }
                     _ => Ok(false)
                 }
             },

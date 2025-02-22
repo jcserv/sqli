@@ -196,14 +196,26 @@ impl Navigable for WorkspacePane {
                             app.search.textarea.delete_line_by_head();
                             Ok(false)
                         }
-                        KeyCode::Char('r') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
-                            app.mode = Mode::Search;
-                            app.search.open = true;
-                            app.search.replace_mode = true;
-                            app.search.textarea.move_cursor(tui_textarea::CursorMove::End);
-                            app.search.textarea.delete_line_by_head();
+                        KeyCode::Up => {
+                            app.navigation.activate_pane(PaneId::Header)?;
                             Ok(false)
                         }
+                        KeyCode::Left => {
+                            app.navigation.activate_pane(PaneId::Collections)?;
+                            Ok(false)
+                        }
+                        KeyCode::Down => {
+                            app.navigation.activate_pane(PaneId::Results)?;
+                            Ok(false)
+                        }
+                        // KeyCode::Char('r') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                        //     app.mode = Mode::Search;
+                        //     app.search.open = true;
+                        //     app.search.replace_mode = true;
+                        //     app.search.textarea.move_cursor(tui_textarea::CursorMove::End);
+                        //     app.search.textarea.delete_line_by_head();
+                        //     Ok(false)
+                        // }
                         _ => Ok(false)
                     }
                 }

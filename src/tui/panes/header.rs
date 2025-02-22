@@ -90,15 +90,28 @@ impl Navigable for HeaderPane {
         if app.mode != Mode::Normal || !app.navigation.is_active(PaneId::Header) {
             return Ok(false);
         }
-        
-        let is_editing = app.is_pane_in_edit_mode(PaneId::Header);
-        
-        match key_event.code {
-            KeyCode::Esc if is_editing => {
-                self.deactivate(app)
+
+        let info = app.navigation.get_pane_info(PaneId::Header).unwrap();
+        match info.focus_type {
+            FocusType::Active => {
+                match key_event.code {
+                    KeyCode::Enter | KeyCode::Char(' ') => {
+                        self.activate(app)
+                    },
+                    KeyCode::Down => {
+                        app.navigation.activate_pane(PaneId::Collections)?;
+                        Ok(false)
+                    },
+                    _ => Ok(false)
+                }
             },
-            KeyCode::Enter | KeyCode::Char(' ') if !is_editing => {
-                self.activate(app)
+            FocusType::Editing => {
+                match key_event.code {
+                    KeyCode::Esc => {
+                        self.deactivate(app)
+                    },
+                    _ => Ok(false)
+                }
             },
             _ => Ok(false)
         }
