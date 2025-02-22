@@ -5,6 +5,7 @@ use ratatui::widgets::Borders;
 use tui_textarea::TextArea;
 use tui_tree_widget::{TreeItem, TreeState};
 
+use crate::query::execute_query;
 use crate::sql::interface::QueryResult;
 
 use super::navigation::{NavigationManager, PaneId};
@@ -108,13 +109,36 @@ impl<'a> App<'a> {
                 match tokio::task::block_in_place(|| futures::executor::block_on(async {
                     handle.await
                 })) {
-                    Ok(AppCommand::ExecuteQuery) => {                        
+                    Ok(AppCommand::ExecuteQuery) => {
+                        // Execute the actual query and store results
+                        let sql = self.workspace.get_content();
                         match &self.selected_connection {
                             Some(connection_name) => {
-                                self.message = format!("Query executed for connection: {}", connection_name);
-                            },
+                                match tokio::task::block_in_place(|| {
+                                    futures::executor::block_on(async {
+                                        execute_query(
+                                            sql,
+                                            None,
+                                            Some(connection_name.clone())
+                                        ).await
+                                    })
+                                }) {
+                                    Ok(result) => {
+                                        self.query_result = result;
+                                        self.message = format!(
+                                            "Query executed successfully in {}ms",
+                                            self.query_result.execution_time.as_millis()
+                                        );
+                                    }
+                                    Err(e) => {
+                                        self.message = format!("Error executing query: {}", e);
+                                        self.query_result = QueryResult::empty();
+                                    }
+                                }
+                            }
                             None => {
                                 self.message = "No connection selected".to_string();
+                                self.query_result = QueryResult::empty();
                             }
                         }
                     },
@@ -124,7 +148,7 @@ impl<'a> App<'a> {
                     Ok(AppCommand::None) => {},
                     Err(e) => {
                         self.message = format!("Error in async operation: {}", e);
-                    },
+                    }
                 }
             }
         }
@@ -134,21 +158,31 @@ impl<'a> App<'a> {
         if self.pending_command != AppCommand::None {
             match self.pending_command {
                 AppCommand::ExecuteQuery => {
-                    self.message = "Executing query...".to_string();
+                    let sql = self.workspace.get_content();
+                    let connection = self.selected_connection.clone();
+                    
+                    let handle = tokio::spawn(async move {
+                        if let Some(conn_name) = connection {
+                            if let Err(e) = execute_query(
+                                sql,
+                                None, 
+                                Some(conn_name)
+                            ).await {
+                                eprintln!("Query error: {}", e);
+                            }
+                        }
+                        AppCommand::ExecuteQuery
+                    });
+                    
+                    self.pending_async_operation = Some(handle);
                 },
                 AppCommand::SaveQuery => {
-                    self.message = "Saving query...".to_string();
+                    self.save_query();
                 },
                 AppCommand::None => {},
             }
             
-            let command = std::mem::replace(&mut self.pending_command, AppCommand::None);
-            
-            let handle = tokio::spawn(async move {
-                command
-            });
-            
-            self.pending_async_operation = Some(handle);
+            self.pending_command = AppCommand::None;
         }
     }
 
