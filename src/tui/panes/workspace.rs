@@ -9,8 +9,9 @@ use ratatui::{
     Frame,
 };
 
-use crate::tui::app::{App, Focus, Mode, Tab};
-use super::traits::{Instructions, PaneEventHandler};
+use crate::tui::app::{App, Mode};
+use crate::tui::navigation::{Navigable, PaneId, FocusType};
+use super::traits::Instructions;
 
 pub struct WorkspacePane;
 
@@ -20,12 +21,16 @@ impl WorkspacePane {
     }
 
     pub fn render(&self, app: &mut App, frame: &mut Frame, area: Rect, search_height: u16) {
-        let workspace_focus = if app.focus == Focus::WorkspaceEdit {
-            Style::default().fg(Color::LightBlue).bold()
-        } else if app.focus == Focus::Workspace {
-            Style::default().fg(Color::LightBlue)
+        let focus_type = if let Some(info) = app.navigation.get_pane_info(PaneId::Workspace) {
+            info.focus_type
         } else {
-            Style::default().fg(Color::White)
+            FocusType::Inactive
+        };
+
+        let workspace_focus = match focus_type {
+            FocusType::Editing => Style::default().fg(Color::LightBlue).bold(),
+            FocusType::Active => Style::default().fg(Color::LightBlue),
+            FocusType::Inactive => Style::default().fg(Color::White),
         };
 
         let block = Block::default()
@@ -69,40 +74,39 @@ impl Instructions for WorkspacePane {
     fn get_instructions(&self, app: &App) -> Line<'static> {
         match app.mode {
             Mode::Normal => {
-                match app.focus {
-                    Focus::Workspace => {
-                        Line::from(vec![
-                            " Tab ".blue().bold(),
-                            "Switch Panel ".white().into(),
-                            " Space ".blue().bold(),
-                            "Edit ".white().into(),
-                            " ^F ".blue().bold(),
-                            "Find ".white().into(),
-                            " ^R ".blue().bold(),
-                            "Replace ".white().into(),
-                            " ^P ".blue().bold(),
-                            "Command ".white().into(),
-                            " ^C ".blue().bold(),
-                            "Quit ".white().into(),
-                        ])
-                    },
-                    Focus::WorkspaceEdit => {
-                        Line::from(vec![
-                            " Esc ".blue().bold(),
-                            "Stop Editing ".white().into(),
-                            " ^S ".blue().bold(),
-                            "Save ".white().into(),
-                            " ^F ".blue().bold(),
-                            "Find ".white().into(),
-                            " ^R ".blue().bold(),
-                            "Replace ".white().into(),
-                            " ^P ".blue().bold(),
-                            "Command ".white().into(),
-                            " ^C ".blue().bold(),
-                            "Quit ".white().into(),
-                        ])
-                    },
-                    _ => Line::from(""),
+                if !app.navigation.is_active(PaneId::Workspace) {
+                    return Line::from("");
+                }
+                
+                let is_editing = app.is_pane_in_edit_mode(PaneId::Workspace);
+                if is_editing {
+                    Line::from(vec![
+                        " Esc ".blue().bold(),
+                        "Return ".white().into(),
+                        " ^S ".blue().bold(),
+                        "Save ".white().into(),
+                        // " ^F ".blue().bold(),
+                        // "Find ".white().into(),
+                        // " ^R ".blue().bold(),
+                        // "Replace ".white().into(),
+                        // " ^P ".blue().bold(),
+                        // "Command ".white().into(),
+                        " ^C ".blue().bold(),
+                        "Quit ".white().into(),
+                    ])
+                } else {
+                    Line::from(vec![
+                        " Tab ".blue().bold(),
+                        "Switch Panel ".white().into(),
+                        " Space ".blue().bold(),
+                        "Select ".white().into(),
+                        // " ^F ".blue().bold(),
+                        // "Find ".white().into(),
+                        // " ^P ".blue().bold(),
+                        // "Command ".white().into(),
+                        " ^C ".blue().bold(),
+                        "Quit ".white().into(),
+                    ])
                 }
             },
             Mode::Search => {
@@ -112,10 +116,10 @@ impl Instructions for WorkspacePane {
                         "Cancel ".white().into(),
                         " Enter ".blue().bold(),
                         "Replace ".white().into(),
-                        " ^N ".blue().bold(),
-                        "Next ".white().into(),
-                        " ^P ".blue().bold(),
-                        "Previous ".white().into(),
+                        // " ^N ".blue().bold(),
+                        // "Next ".white().into(),
+                        // " ^P ".blue().bold(),
+                        // "Previous ".white().into(),
                         " ^C ".blue().bold(),
                         "Quit ".white().into(),
                     ])
@@ -125,10 +129,10 @@ impl Instructions for WorkspacePane {
                         "Cancel ".white().into(),
                         " Enter ".blue().bold(),
                         "Find ".white().into(),
-                        " ^N ".blue().bold(),
-                        "Next ".white().into(),
-                        " ^P ".blue().bold(),
-                        "Previous ".white().into(),
+                        // " ^N ".blue().bold(),
+                        // "Next ".white().into(),
+                        // " ^P ".blue().bold(),
+                        // "Previous ".white().into(),
                         " ^C ".blue().bold(),
                         "Quit ".white().into(),
                     ])
@@ -139,59 +143,73 @@ impl Instructions for WorkspacePane {
     }
 }
 
-impl PaneEventHandler for WorkspacePane {
+impl Navigable for WorkspacePane {    
     fn handle_key_event(&self, app: &mut App, key_event: KeyEvent) -> Result<bool> {
+        if !app.navigation.is_active(PaneId::Workspace) {
+            return Ok(false);
+        }
+        
         match app.mode {
             Mode::Normal => {
-                match app.focus {
-                    Focus::Workspace => {
-                        match key_event.code {
-                            KeyCode::Char(' ') | KeyCode::Enter => {
-                                app.focus = Focus::WorkspaceEdit;
-                                Ok(false)
-                            }
-                            KeyCode::Char('f') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
-                                app.mode = Mode::Search;
-                                app.search.open = true;
-                                app.search.replace_mode = false;
-                                app.search.textarea.move_cursor(tui_textarea::CursorMove::End);
-                                app.search.textarea.delete_line_by_head();
-                                Ok(false)
-                            }
-                            KeyCode::Char('r') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
-                                app.mode = Mode::Search;
-                                app.search.open = true;
-                                app.search.replace_mode = true;
-                                app.search.textarea.move_cursor(tui_textarea::CursorMove::End);
-                                app.search.textarea.delete_line_by_head();
-                                Ok(false)
-                            }
-                            _ => Ok(false)
+                if app.is_pane_in_edit_mode(PaneId::Workspace) {
+                    match key_event.code {
+                        KeyCode::Esc => {
+                            self.deactivate(app)
                         }
-                    },
-                    Focus::WorkspaceEdit => {
-                        match key_event.code {
-                            KeyCode::Esc => {
-                                app.focus = Focus::Workspace;
-                                Ok(false)
-                            }
-                            KeyCode::Char('s') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
-                                app.save_query();
-                                Ok(false)
-                            }
-                            _ => {
-                                // Forward all other keys to the text area
-                                let input = tui_textarea::Input::from(key_event);
-                                app.workspace.input(input);
-                                Ok(false)
-                            }
+                        KeyCode::Char('s') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                            app.save_query();
+                            Ok(false)
                         }
-                    },
-                    _ => Ok(false),
+                        KeyCode::Char('f') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                            app.mode = Mode::Search;
+                            app.search.open = true;
+                            app.search.replace_mode = false;
+                            app.search.textarea.move_cursor(tui_textarea::CursorMove::End);
+                            app.search.textarea.delete_line_by_head();
+                            Ok(false)
+                        }
+                        KeyCode::Char('r') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                            app.mode = Mode::Search;
+                            app.search.open = true;
+                            app.search.replace_mode = true;
+                            app.search.textarea.move_cursor(tui_textarea::CursorMove::End);
+                            app.search.textarea.delete_line_by_head();
+                            Ok(false)
+                        }
+                        _ => {
+                            // Forward all other keys to the text area
+                            let input = tui_textarea::Input::from(key_event);
+                            app.workspace.input(input);
+                            Ok(false)
+                        }
+                    }
+                } else {
+                    match key_event.code {
+                        KeyCode::Char(' ') | KeyCode::Enter => {
+                            self.activate(app)
+                        }
+                        KeyCode::Char('f') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                            app.mode = Mode::Search;
+                            app.search.open = true;
+                            app.search.replace_mode = false;
+                            app.search.textarea.move_cursor(tui_textarea::CursorMove::End);
+                            app.search.textarea.delete_line_by_head();
+                            Ok(false)
+                        }
+                        KeyCode::Char('r') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                            app.mode = Mode::Search;
+                            app.search.open = true;
+                            app.search.replace_mode = true;
+                            app.search.textarea.move_cursor(tui_textarea::CursorMove::End);
+                            app.search.textarea.delete_line_by_head();
+                            Ok(false)
+                        }
+                        _ => Ok(false)
+                    }
                 }
             },
             Mode::Search => {
-                // Handle search mode, which is specific to the workspace pane
+                // Handle search mode inputs
                 let input = tui_textarea::Input::from(key_event);
                 match input {
                     tui_textarea::Input { key: tui_textarea::Key::Esc, .. } => {
@@ -203,7 +221,8 @@ impl PaneEventHandler for WorkspacePane {
                     tui_textarea::Input { key: tui_textarea::Key::Enter, .. } => {
                         if app.search.replace_mode {
                             let pattern = app.search.textarea.lines()[0].as_str();
-                            let replacement = app.search.textarea.lines().get(1).map(|s| s.as_str()).unwrap_or("");
+                            let replacement = app.search.textarea.lines().get(1)
+                                                 .map(|s| s.as_str()).unwrap_or("");
                             app.workspace.set_search_pattern(pattern)?;
                             if key_event.modifiers.contains(KeyModifiers::CONTROL) {
                                 let count = app.workspace.replace_all(replacement);
@@ -260,10 +279,18 @@ impl PaneEventHandler for WorkspacePane {
     }
     
     fn handle_mouse_event(&self, app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
-        app.select_tab(Tab::Workspace);        
-        if app.focus == Focus::Workspace {
-            app.focus = Focus::WorkspaceEdit;
-        }        
+        app.navigation.activate_pane(PaneId::Workspace)?;
+        app.navigation.start_editing(PaneId::Workspace)?;
+        Ok(false)
+    }
+    
+    fn activate(&self, app: &mut App) -> Result<bool> {
+        app.navigation.start_editing(PaneId::Workspace)?;
+        Ok(false)
+    }
+    
+    fn deactivate(&self, app: &mut App) -> Result<bool> {
+        app.navigation.stop_editing(PaneId::Workspace)?;
         Ok(false)
     }
 }

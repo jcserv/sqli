@@ -10,8 +10,9 @@ use ratatui::{
 };
 
 use crate::{collection::{build_collection_tree, load_collections}, file::load_sql_content, tui::widgets::file_tree::FileTree};
-use crate::tui::app::{App, Focus, Mode, Tab};
-use super::traits::{Instructions, PaneEventHandler};
+use crate::tui::app::{App, Mode};
+use crate::tui::navigation::{Navigable, PaneId, FocusType};
+use super::traits::Instructions;
 
 pub struct CollectionsPane {
     last_area: Option<Rect>,
@@ -27,12 +28,17 @@ impl CollectionsPane {
     pub fn render(&mut self, app: &mut App, frame: &mut Frame, area: Rect) {
         self.last_area = Some(area);
 
-        let focus_style = if app.focus == Focus::CollectionsEdit {
-            Style::default().fg(Color::LightBlue).bold()
-        } else if app.focus == Focus::Collections {
-            Style::default().fg(Color::LightBlue)
+        // let is_active = app.navigation.is_active(PaneId::Collections);
+        let focus_type = if let Some(info) = app.navigation.get_pane_info(PaneId::Collections) {
+            info.focus_type
         } else {
-            Style::default().fg(Color::White)
+            FocusType::Inactive
+        };
+
+        let focus_style = match focus_type {
+            FocusType::Editing => Style::default().fg(Color::LightBlue).bold(),
+            FocusType::Active => Style::default().fg(Color::LightBlue),
+            FocusType::Inactive => Style::default().fg(Color::White),
         };
 
         let tree = FileTree::new(&app.collection_items)
@@ -56,7 +62,6 @@ impl CollectionsPane {
                     .track_symbol(None)
                     .end_symbol(None)
             ));
-
 
         frame.render_stateful_widget(tree, area, &mut app.collection_state);
     }
@@ -106,60 +111,63 @@ impl CollectionsPane {
 
 impl Instructions for CollectionsPane {
     fn get_instructions(&self, app: &App) -> Line {
-        match app.mode {
-            Mode::Normal => {
-                match app.focus {
-                    Focus::Collections => {
-                        Line::from(vec![
-                            " Tab ".blue().bold(),
-                            "Switch Panel ".white().into(),
-                            " Space ".blue().bold(),
-                            "Select ".white().into(),
-                            " ^P ".blue().bold(),
-                            "Command ".white().into(),
-                            " ^C ".blue().bold(),
-                            "Quit ".white().into(),
-                        ])
-                    },
-                    Focus::CollectionsEdit => {
-                        Line::from(vec![
-                            " Esc ".blue().bold(),
-                            "Deselect ".white().into(),
-                            " ^P ".blue().bold(),
-                            "Command ".white().into(),
-                            " ^C ".blue().bold(),
-                            "Quit ".white().into(),
-                        ])
-                    },
-                    _ => Line::from(""),
-                }
-            },
-            _ => Line::from(""),
+        if app.mode != Mode::Normal {
+            return Line::from("");
+        }
+        
+        if !app.is_collections_active() {
+            return Line::from("");
+        }
+        
+        if app.is_pane_in_edit_mode(PaneId::Collections) {
+            Line::from(vec![
+                " Esc ".blue().bold(),
+                "Return ".white().into(),
+                " ↑/↓ ".blue().bold(),
+                "Navigate ".white().into(),
+                " Space ".blue().bold(),
+                "Confirm ".white().into(),
+                " ^P ".blue().bold(),
+                "Command ".white().into(),
+                " ^C ".blue().bold(),
+                "Quit ".white().into(),
+            ])
+        } else {
+            Line::from(vec![
+                " Tab ".blue().bold(),
+                "Switch Panel ".white().into(),
+                " Space ".blue().bold(),
+                "Select ".white().into(),
+                " ^P ".blue().bold(),
+                "Command ".white().into(),
+                " ^C ".blue().bold(),
+                "Quit ".white().into(),
+            ])
         }
     }
 }
 
-impl PaneEventHandler for CollectionsPane {
+impl Navigable for CollectionsPane {
     fn handle_key_event(&self, app: &mut App, key_event: KeyEvent) -> Result<bool> {
-        if app.mode != Mode::Normal {
+        if app.mode != Mode::Normal || !app.navigation.is_active(PaneId::Collections) {
             return Ok(false);
         }
         
-        match app.focus {
-            Focus::Collections => {
+        let info = app.navigation.get_pane_info(PaneId::Collections).unwrap();
+        
+        match info.focus_type {
+            FocusType::Active => {
                 match key_event.code {
                     KeyCode::Enter | KeyCode::Char(' ') => {
-                        app.focus = Focus::CollectionsEdit;
-                        Ok(false)
+                        self.activate(app)
                     },
                     _ => Ok(false)
                 }
             },
-            Focus::CollectionsEdit => {
+            FocusType::Editing => {
                 match key_event.code {
                     KeyCode::Esc => {
-                        app.focus = Focus::Collections;
-                        Ok(false)
+                        self.deactivate(app)
                     },
                     KeyCode::Enter | KeyCode::Char(' ') => {
                         app.collection_state.toggle_selected();
@@ -190,23 +198,28 @@ impl PaneEventHandler for CollectionsPane {
     }
     
     fn handle_mouse_event(&self, app: &mut App, mouse_event: MouseEvent) -> Result<bool> {
-        if app.current_tab != Tab::Collections {
-            app.select_tab(Tab::Collections);
-        }
-
-        if app.focus == Focus::Collections {
-            app.focus = Focus::CollectionsEdit;
-        }
+        app.navigation.activate_pane(PaneId::Collections)?;
 
         if let Some(area) = self.last_area {
             let tree = FileTree::new(&app.collection_items).expect("all item identifiers are unique");
             if tree.handle_mouse_event(&mut app.collection_state, mouse_event, area)? {
-                // If a click was handled successfully, load the file if it's a SQL file
+                app.navigation.start_editing(PaneId::Collections)?;
                 self.handle_selection(app)?;
                 return Ok(false);
             }
         }
         
+        app.navigation.start_editing(PaneId::Collections)?;
+        Ok(false)
+    }
+    
+    fn activate(&self, app: &mut App) -> Result<bool> {
+        app.navigation.start_editing(PaneId::Collections)?;
+        Ok(false)
+    }
+    
+    fn deactivate(&self, app: &mut App) -> Result<bool> {
+        app.navigation.stop_editing(PaneId::Collections)?;
         Ok(false)
     }
 }

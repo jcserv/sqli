@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent};
+use crossterm::event::{KeyEvent, MouseEvent};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style, Stylize},
@@ -9,7 +9,9 @@ use ratatui::{
 };
 
 use super::{
-    app::{App, Focus, Mode}, panes::{collections::CollectionsPane, results::ResultsPane, workspace::WorkspacePane, traits::{Instructions, PaneEventHandler}},
+    app::{App, Mode}, 
+    navigation::{PaneId, Navigable},
+    panes::{collections::CollectionsPane, results::ResultsPane, workspace::WorkspacePane, traits::Instructions},
 };
 
 pub struct UI {
@@ -100,10 +102,14 @@ impl UI {
     pub fn render_instructions(&self, app: &App, frame: &mut Frame, area: Rect) {
         let instructions = match app.mode {
             Mode::Normal => {
-                match app.focus {
-                    Focus::Collections | Focus::CollectionsEdit => self.collections_pane.get_instructions(app),
-                    Focus::Workspace | Focus::WorkspaceEdit => self.workspace_pane.get_instructions(app),
-                    Focus::Result => self.results_pane.get_instructions(app),
+                if let Some(active_pane) = app.navigation.active_pane() {
+                    match active_pane {
+                        PaneId::Collections => self.collections_pane.get_instructions(app),
+                        PaneId::Workspace => self.workspace_pane.get_instructions(app),
+                        PaneId::Results => self.results_pane.get_instructions(app),
+                    }
+                } else {
+                    Line::from("")
                 }
             },
             Mode::Command => Line::from(vec![
@@ -125,27 +131,10 @@ impl UI {
     }
 
     pub fn handle_key_event(&self, app: &mut App, key_event: KeyEvent) -> Result<bool> {
-        // Handle global key events first
-        match (key_event.code, key_event.modifiers) {
-            (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
-                app.should_quit = true;
-                return Ok(true);
-            }
-            (KeyCode::Tab, _) if app.focus != Focus::WorkspaceEdit => {
-                app.cycle_tab();
-                return Ok(false);
-            }
-            (KeyCode::Char('p'), KeyModifiers::CONTROL) => {
-                app.mode = Mode::Command;
-                return Ok(false);
-            }
-            _ => {}
-        }
-        
-        match app.focus {
-            Focus::Collections | Focus::CollectionsEdit => self.collections_pane.handle_key_event(app, key_event),
-            Focus::Workspace | Focus::WorkspaceEdit => self.workspace_pane.handle_key_event(app, key_event),
-            Focus::Result => self.results_pane.handle_key_event(app, key_event),
+        match app.navigation.active_pane().unwrap() {
+            PaneId::Collections => self.collections_pane.handle_key_event(app, key_event),
+            PaneId::Workspace => self.workspace_pane.handle_key_event(app, key_event),
+            PaneId::Results => self.results_pane.handle_key_event(app, key_event),
         }
     }
 
