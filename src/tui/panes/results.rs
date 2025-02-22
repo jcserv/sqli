@@ -1,12 +1,7 @@
 use anyhow::Result;
 use crossterm::event::{KeyEvent, MouseEvent, KeyCode};
 use ratatui::{
-    prelude::*, 
-    Frame,
-    layout::{Constraint, Rect}, 
-    style::{Color, Modifier, Style}, 
-    text::Line, 
-    widgets::{Block, Borders, Cell, Row, Scrollbar, ScrollbarState, ScrollbarOrientation, Table, TableState}, 
+    layout::{Constraint, Rect}, prelude::*, style::{Color, Modifier, Style}, text::Line, widgets::{Block, Borders, Cell, Paragraph, Row, Scrollbar, ScrollbarOrientation, ScrollbarState, Table, TableState}, Frame 
 };
 
 use crate::{sql::interface::QueryResult, tui::app::{App, Mode}};
@@ -66,6 +61,15 @@ impl ResultsPane {
         let constraints = calculate_column_constraints(&app.query_result);
         
         let row_count = app.query_result.rows.len();
+
+        if row_count == 0 || app.query_result.columns.is_empty() {
+            let empty_message = Paragraph::new("No query results to display. Run a query using the button above.")
+                .alignment(Alignment::Center)
+                .style(Style::default().fg(Color::DarkGray));
+            
+            frame.render_widget(empty_message, inner_area);
+            return;
+        }
             
         let rows = app.query_result.rows.iter().map(|item| {
             let cells = item.iter().map(|c| Cell::from(c.as_str()));

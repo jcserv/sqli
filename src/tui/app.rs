@@ -108,9 +108,7 @@ impl<'a> App<'a> {
                 match tokio::task::block_in_place(|| futures::executor::block_on(async {
                     handle.await
                 })) {
-                    Ok(AppCommand::ExecuteQuery) => {
-                        let sql = self.workspace.get_content();
-                        
+                    Ok(AppCommand::ExecuteQuery) => {                        
                         match &self.selected_connection {
                             Some(connection_name) => {
                                 self.message = format!("Query executed for connection: {}", connection_name);
