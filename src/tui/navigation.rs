@@ -5,6 +5,7 @@ use crossterm::event::{KeyEvent, MouseEvent};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PaneId {
+    Header,
     Collections,
     Workspace,
     Results,

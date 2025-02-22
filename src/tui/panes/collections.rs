@@ -28,7 +28,6 @@ impl CollectionsPane {
     pub fn render(&mut self, app: &mut App, frame: &mut Frame, area: Rect) {
         self.last_area = Some(area);
 
-        // let is_active = app.navigation.is_active(PaneId::Collections);
         let focus_type = if let Some(info) = app.navigation.get_pane_info(PaneId::Collections) {
             info.focus_type
         } else {

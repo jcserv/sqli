@@ -11,10 +11,17 @@ use ratatui::{
 use super::{
     app::{App, Mode}, 
     navigation::{PaneId, Navigable},
-    panes::{collections::CollectionsPane, results::ResultsPane, workspace::WorkspacePane, traits::Instructions},
+    panes::{
+        collections::CollectionsPane, 
+        header::HeaderPane,
+        results::ResultsPane, 
+        workspace::WorkspacePane, 
+        traits::Instructions
+    },
 };
 
 pub struct UI {
+    header_pane: HeaderPane,
     collections_pane: CollectionsPane,
     workspace_pane: WorkspacePane,
     results_pane: ResultsPane,
@@ -23,6 +30,7 @@ pub struct UI {
 impl UI {
     pub fn new() -> Self {
         Self {
+            header_pane: HeaderPane::new(),
             collections_pane: CollectionsPane::new(),
             workspace_pane: WorkspacePane::new(),
             results_pane: ResultsPane::new(),
@@ -39,7 +47,7 @@ impl UI {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(1),     
+                Constraint::Length(4),     
                 Constraint::Min(0),        
                 Constraint::Length(3),    
             ])
@@ -49,7 +57,7 @@ impl UI {
         let main_area = chunks[1];
         let status_area = chunks[2];
 
-        self.render_app_info(app, frame, top_bar);
+        self.header_pane.render(app, frame, top_bar);
 
         let main_chunks = Layout::default()
             .direction(Direction::Horizontal)
@@ -79,31 +87,12 @@ impl UI {
         self.render_instructions(app, frame, status_area);
     }
 
-    fn render_app_info(&self, _app: &App, frame: &mut Frame, area: Rect) {
-        let app_info_line = Line::from(vec![
-            " sqli ".white().bold(),
-            "v0.1.0 ".white().into(),
-        ]);
-
-        let chunks = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Length(12),
-                Constraint::Min(0),
-            ])
-            .split(area);
-
-        let title = Paragraph::new(app_info_line)
-            .style(Style::default());
-
-        frame.render_widget(title, chunks[0]);
-    }
-
     pub fn render_instructions(&self, app: &App, frame: &mut Frame, area: Rect) {
         let instructions = match app.mode {
             Mode::Normal => {
                 if let Some(active_pane) = app.navigation.active_pane() {
                     match active_pane {
+                        PaneId::Header => self.header_pane.get_instructions(app),
                         PaneId::Collections => self.collections_pane.get_instructions(app),
                         PaneId::Workspace => self.workspace_pane.get_instructions(app),
                         PaneId::Results => self.results_pane.get_instructions(app),
@@ -132,6 +121,7 @@ impl UI {
 
     pub fn handle_key_event(&self, app: &mut App, key_event: KeyEvent) -> Result<bool> {
         match app.navigation.active_pane().unwrap() {
+            PaneId::Header => self.header_pane.handle_key_event(app, key_event),
             PaneId::Collections => self.collections_pane.handle_key_event(app, key_event),
             PaneId::Workspace => self.workspace_pane.handle_key_event(app, key_event),
             PaneId::Results => self.results_pane.handle_key_event(app, key_event),

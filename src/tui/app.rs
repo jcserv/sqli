@@ -58,6 +58,7 @@ impl<'a> App<'a> {
         let collection_items = super::panes::collections::CollectionsPane::load_collections();
         
         let mut navigation = NavigationManager::new();
+        navigation.register_pane(PaneId::Header, 1);
         navigation.register_pane(PaneId::Collections, 1);
         navigation.register_pane(PaneId::Workspace, 1);
         navigation.register_pane(PaneId::Results, 1);

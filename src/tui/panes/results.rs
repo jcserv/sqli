@@ -21,7 +21,6 @@ impl ResultsPane {
     }
 
     pub fn render(&self, app: &mut App, frame: &mut Frame, area: Rect) {
-        // let is_active = app.navigation.is_active(PaneId::Results);
         let focus_type = if let Some(info) = app.navigation.get_pane_info(PaneId::Results) {
             info.focus_type
         } else {
