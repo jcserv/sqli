@@ -25,28 +25,6 @@ pub enum Mode {
     Password,
 }
 
-pub struct SearchBox<'a> {
-    pub textarea: TextArea<'a>,
-    pub open: bool,
-    pub replace_mode: bool,
-}
-
-impl Default for SearchBox<'_> {
-    fn default() -> Self {
-        let mut textarea = TextArea::default();
-        textarea.set_block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Search")
-        );
-        Self {
-            textarea,
-            open: false,
-            replace_mode: false,
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AppCommand {
     None,
@@ -76,6 +54,29 @@ impl AsyncCommandResult {
     }
 }
 
+// Handles the search interface state
+pub struct SearchBox<'a> {
+    pub textarea: TextArea<'a>,
+    pub open: bool,
+    pub replace_mode: bool,
+}
+
+impl Default for SearchBox<'_> {
+    fn default() -> Self {
+        let mut textarea = TextArea::default();
+        textarea.set_block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Search")
+        );
+        Self {
+            textarea,
+            open: false,
+            replace_mode: false,
+        }
+    }
+}
+
 pub struct App<'a> {
     pub mode: Mode,
     pub message: String,
@@ -99,6 +100,7 @@ pub struct App<'a> {
     pub should_quit: bool,
 }
 
+// Core application initialization and state
 impl<'a> App<'a> {
     pub fn new() -> Self {
         let mut workspace = SearchableTextArea::default();
@@ -133,164 +135,35 @@ impl<'a> App<'a> {
         }
     }
 
-    pub fn process_async_results(&mut self) {
-        if let Some(handle) = &mut self.pending_async_operation {
-            if handle.is_finished() {
-                let handle = std::mem::take(&mut self.pending_async_operation).unwrap();
-                
-                match tokio::task::block_in_place(|| futures::executor::block_on(async {
-                    handle.await
-                })) {
-                    Ok(result) => {
-                        match result.command {
-                            AppCommand::ExecuteQuery => {
-                                let sql = self.workspace.get_content();
-                                let connection = self.selected_connection.clone();
-                                match tokio::task::block_in_place(|| {
-                                    futures::executor::block_on(async {
-                                        crate::query::execute_query(
-                                            sql,
-                                            None,
-                                            connection,
-                                            self.current_password.clone(),
-                                        ).await
-                                    })
-                                }) {
-                                    Ok(query_result) => {
-                                        self.query_result = query_result;
-                                        self.message = format!(
-                                            "Query executed successfully in {}ms",
-                                            self.query_result.execution_time.as_millis()
-                                        );
-                                        _ = self.navigation.activate_pane(PaneId::Results);
-                                    }
-                                    Err(e) => {
-                                        if e.to_string().contains("password authentication failed") {
-                                            self.show_password_prompt();
-                                        } else {
-                                            self.message = format!("Error executing query: {}", e);
-                                            self.query_result = QueryResult::empty();
-                                        }
-                                    }
-                                }
-                            },
-                            AppCommand::SaveQuery => {
-                                self.save_query();
-                            },
-                            AppCommand::None => {},
-                        }
+    pub fn is_collections_active(&self) -> bool {
+        self.navigation.is_active(PaneId::Collections)
+    }
     
-                        if let Some(msg) = result.message {
-                            self.message = msg;
-                        }
-                    },
-                    Err(e) => {
-                        self.message = format!("Error in async operation: {}", e);
-                    }
-                }
-            }
+    pub fn is_workspace_active(&self) -> bool {
+        self.navigation.is_active(PaneId::Workspace)
+    }
+    
+    pub fn is_results_active(&self) -> bool {
+        self.navigation.is_active(PaneId::Results)
+    }
+
+    pub fn is_edit_mode(&self) -> bool {
+        [PaneId::Collections, PaneId::Workspace, PaneId::Results]
+            .iter()
+            .any(|&pane_id| self.is_pane_in_edit_mode(pane_id))
+    }
+    
+    pub fn is_pane_in_edit_mode(&self, pane_id: PaneId) -> bool {
+        if let Some(info) = self.navigation.get_pane_info(pane_id) {
+            info.is_editing()
+        } else {
+            false
         }
     }
+}
 
-    pub fn tick(&mut self) {
-        if self.pending_command != AppCommand::None {
-            match self.pending_command {
-                AppCommand::ExecuteQuery => {
-                    self.check_and_execute_query();
-                },
-                AppCommand::SaveQuery => {
-                    self.save_query();
-                },
-                AppCommand::None => {},
-            }
-            
-            self.pending_command = AppCommand::None;
-        }
-    }
-
-    pub fn handle_key(&mut self, ui: &mut UI, key_event: KeyEvent) -> Result<bool> {
-        match (key_event.code, key_event.modifiers) {
-            (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
-                self.should_quit = true;
-                return Ok(true);
-            }
-            (KeyCode::Tab, _) if !self.is_edit_mode() && !self.modal_manager.is_modal_active() => {
-                _ = self.navigation.cycle_pane(false);
-                return Ok(false);
-            }
-            (KeyCode::Char('p'), KeyModifiers::CONTROL) if !self.modal_manager.is_modal_active() => {
-                self.mode = Mode::Command;
-                return Ok(false);
-            }
-            _ => {
-                if self.modal_manager.is_modal_active() {
-                    match self.modal_manager.handle_event(ModalEvent::Key(key_event))? {
-                        ModalAction::Close => {
-                            self.close_modal();
-                        }
-                        ModalAction::Custom(action) => {
-                            match action.as_str() {
-                                "submit" => {
-                                    if let Some(modal) = self.modal_manager.get_active_modal_as::<PasswordModal>() {
-                                        self.current_password = modal.get_password();
-                                        self.execute_query_with_password(self.current_password.clone());
-                                    }
-                                    self.close_modal();
-                                }
-                                "cancel" => {
-                                    self.close_modal();
-                                }
-                                _ => {}
-                            }
-                        }
-                        ModalAction::None => {}
-                    }
-                    return Ok(false);
-                }
-                
-                return ui.handle_key_event(self, key_event);
-            }
-        }
-    }
-
-    pub fn handle_mouse(&mut self, ui: &super::ui::UI, mouse_event: MouseEvent) -> anyhow::Result<bool> {
-        if self.modal_manager.is_modal_active() {
-            let terminal_area = crossterm::terminal::size()
-                .map(|(w, h)| Rect::new(0, 0, w, h))
-                .unwrap_or(Rect::new(0, 0, 80, 24));
-
-            match self.modal_manager.handle_event(ModalEvent::Mouse(mouse_event, terminal_area))? {
-                ModalAction::Close => {
-                    self.close_modal();
-                    return Ok(false);
-                }
-                ModalAction::Custom(action) => {
-                    match action.as_str() {
-                        "submit" => {
-                            if let Some(modal) = self.modal_manager.get_active_modal_as::<PasswordModal>() {
-                                self.current_password = modal.get_password();
-                                self.execute_query_with_password(self.current_password.clone());
-                            }
-                            self.close_modal();
-                        }
-                        "cancel" => {
-                            self.close_modal();
-                        }
-                        _ => {}
-                    }
-                    return Ok(false);
-                }
-                ModalAction::None => return Ok(false),
-            }
-        }
-        ui.handle_mouse_event(self, mouse_event)
-    }
-
-    fn close_modal(&mut self) {
-        self.modal_manager.close_modal();
-        self.mode = Mode::Normal;
-    }
-
+// Query execution and management
+impl<'a> App<'a> {
     pub fn check_and_execute_query(&mut self) {
         if let Some(conn_name) = &self.selected_connection {
             match query::get_connection(conn_name) {
@@ -337,38 +210,187 @@ impl<'a> App<'a> {
     pub fn save_query(&mut self) {
         let content = self.workspace.get_content();
         if !content.is_empty() {
-            // TODO
+            // TODO: Implement save functionality
         }
+    }
+}
+
+// Async operation handling
+impl<'a> App<'a> {
+    pub fn process_async_results(&mut self) {
+        if let Some(handle) = &mut self.pending_async_operation {
+            if handle.is_finished() {
+                let handle = std::mem::take(&mut self.pending_async_operation).unwrap();
+                
+                match tokio::task::block_in_place(|| futures::executor::block_on(async {
+                    handle.await
+                })) {
+                    Ok(result) => {
+                        match result.command {
+                            AppCommand::ExecuteQuery => {
+                                let sql = self.workspace.get_content();
+                                let connection = self.selected_connection.clone();
+                                match tokio::task::block_in_place(|| {
+                                    futures::executor::block_on(async {
+                                        execute_query(
+                                            sql,
+                                            None,
+                                            connection,
+                                            self.current_password.clone(),
+                                        ).await
+                                    })
+                                }) {
+                                    Ok(query_result) => {
+                                        self.query_result = query_result;
+                                        self.message = format!(
+                                            "Query executed successfully in {}ms",
+                                            self.query_result.execution_time.as_millis()
+                                        );
+                                    }
+                                    Err(e) => {
+                                        if e.to_string().contains("password authentication failed") {
+                                            self.show_password_prompt();
+                                        } else {
+                                            self.message = format!("Error executing query: {}", e);
+                                            self.query_result = QueryResult::empty();
+                                        }
+                                    }
+                                }
+                            },
+                            AppCommand::SaveQuery => {
+                                self.save_query();
+                            },
+                            AppCommand::None => {},
+                        }
+    
+                        if let Some(msg) = result.message {
+                            self.message = msg;
+                        }
+                    },
+                    Err(e) => {
+                        self.message = format!("Error in async operation: {}", e);
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Event handling
+impl<'a> App<'a> {
+    pub fn tick(&mut self) {
+        if self.pending_command != AppCommand::None {
+            match self.pending_command {
+                AppCommand::ExecuteQuery => {
+                    self.check_and_execute_query();
+                },
+                AppCommand::SaveQuery => {
+                    self.save_query();
+                },
+                AppCommand::None => {},
+            }
+            
+            self.pending_command = AppCommand::None;
+        }
+    }
+
+    pub fn handle_key(&mut self, ui: &mut UI, key_event: KeyEvent) -> Result<bool> {
+        match (key_event.code, key_event.modifiers) {
+            (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
+                self.should_quit = true;
+                return Ok(true);
+            }
+            (KeyCode::Tab, _) if !self.is_edit_mode() && !self.modal_manager.is_modal_active() => {
+                _ = self.navigation.cycle_pane(false);
+                return Ok(false);
+            }
+            (KeyCode::Char('p'), KeyModifiers::CONTROL) if !self.modal_manager.is_modal_active() => {
+                self.mode = Mode::Command;
+                return Ok(false);
+            }
+            _ => {
+                if self.modal_manager.is_modal_active() {
+                    self.handle_modal_key_event(key_event)?;
+                    return Ok(false);
+                }
+                
+                return ui.handle_key_event(self, key_event);
+            }
+        }
+    }
+
+    pub fn handle_mouse(&mut self, ui: &super::ui::UI, mouse_event: MouseEvent) -> Result<bool> {
+        if self.modal_manager.is_modal_active() {
+            let terminal_area = crossterm::terminal::size()
+                .map(|(w, h)| Rect::new(0, 0, w, h))
+                .unwrap_or(Rect::new(0, 0, 80, 24));
+
+            self.handle_modal_mouse_event(mouse_event, terminal_area)?;
+            return Ok(false);
+        }
+        ui.handle_mouse_event(self, mouse_event)
+    }
+}
+
+// Modal handling
+impl<'a> App<'a> {
+    fn handle_modal_key_event(&mut self, key_event: KeyEvent) -> Result<()> {
+        match self.modal_manager.handle_event(ModalEvent::Key(key_event))? {
+            ModalAction::Close => {
+                self.close_modal();
+            }
+            ModalAction::Custom(action) => {
+                match action.as_str() {
+                    "submit" => {
+                        if let Some(modal) = self.modal_manager.get_active_modal_as::<PasswordModal>() {
+                            self.current_password = modal.get_password();
+                            self.execute_query_with_password(self.current_password.clone());
+                        }
+                        self.close_modal();
+                    }
+                    "cancel" => {
+                        self.close_modal();
+                    }
+                    _ => {}
+                }
+            }
+            ModalAction::None => {}
+        }
+        Ok(())
+    }
+
+    fn handle_modal_mouse_event(&mut self, mouse_event: MouseEvent, area: Rect) -> Result<()> {
+        match self.modal_manager.handle_event(ModalEvent::Mouse(mouse_event, area))? {
+            ModalAction::Close => {
+                self.close_modal();
+            }
+            ModalAction::Custom(action) => {
+                match action.as_str() {
+                    "submit" => {
+                        if let Some(modal) = self.modal_manager.get_active_modal_as::<PasswordModal>() {
+                            self.current_password = modal.get_password();
+                            self.execute_query_with_password(self.current_password.clone());
+                        }
+                        self.close_modal();
+                    }
+                    "cancel" => {
+                        self.close_modal();
+                    }
+                    _ => {}
+                }
+            }
+            ModalAction::None => {}
+        }
+        Ok(())
+    }
+
+    fn close_modal(&mut self) {
+        self.modal_manager.close_modal();
+        self.mode = Mode::Normal;
     }
 
     pub fn show_password_prompt(&mut self) {
         self.modal_manager.show_modal(ModalType::Password);
         self.mode = Mode::Password;
-    }
-
-    pub fn is_collections_active(&self) -> bool {
-        self.navigation.is_active(PaneId::Collections)
-    }
-    
-    pub fn is_workspace_active(&self) -> bool {
-        self.navigation.is_active(PaneId::Workspace)
-    }
-    
-    pub fn is_results_active(&self) -> bool {
-        self.navigation.is_active(PaneId::Results)
-    }
-
-    pub fn is_edit_mode(&self) -> bool {
-        [PaneId::Collections, PaneId::Workspace, PaneId::Results]
-            .iter()
-            .any(|&pane_id| self.is_pane_in_edit_mode(pane_id))
-    }
-    
-    pub fn is_pane_in_edit_mode(&self, pane_id: PaneId) -> bool {
-        if let Some(info) = self.navigation.get_pane_info(pane_id) {
-            info.is_editing()
-        } else {
-            false
-        }
     }
 }
