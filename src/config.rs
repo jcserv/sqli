@@ -68,17 +68,23 @@ pub struct Config {
 }
 
 impl Connection {
-    pub fn to_url(&self) -> String {
-        let password = match &self.password {
-            Some(pwd) => pwd.clone(),
-            None => rpassword::prompt_password("Enter database password: ")
-                .expect("Failed to read password"),
-        };
+    pub fn to_url(&self, password: Option<String>) -> String {
+        let pwd = password.or(self.password.clone());
+        
+        match pwd {
+            Some(pass) => format!(
+                "{}://{}:{}@{}:{}/{}",
+                self.conn, self.user, pass, self.host, self.port, self.database
+            ),
+            None => format!(
+                "{}://{}@{}:{}/{}",
+                self.conn, self.user, self.host, self.port, self.database
+            ),
+        }
+    }
 
-        format!(
-            "{}://{}:{}@{}:{}/{}",
-            self.conn, self.user, password, self.host, self.port, self.database
-        )
+    pub fn requires_password(&self) -> bool {
+        self.password.is_none()
     }
 }
 

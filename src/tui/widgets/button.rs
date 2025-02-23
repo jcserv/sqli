@@ -30,13 +30,26 @@ pub struct Theme {
     shadow: Color,
 }
 
+pub const RED: Theme = Theme {
+    text: Color::White,
+    background: Color::Rgb(144, 48, 48),
+    highlight: Color::Rgb(192, 64, 64),
+    shadow: Color::Rgb(96, 32, 32),
+};
+
+pub const GREEN: Theme = Theme {
+    text: Color::White,
+    background: Color::Rgb(48, 144, 48),
+    highlight: Color::Rgb(64, 192, 64),
+    shadow: Color::Rgb(32, 96, 32),
+};
+
 pub const BLUE: Theme = Theme {
     text: Color::White,
     background: Color::Rgb(48, 72, 144),
     highlight: Color::Rgb(64, 96, 192),
     shadow: Color::Rgb(32, 48, 96),
 };
-
 
 /// A button with a label that can be themed.
 impl<'a> Button<'a> {
