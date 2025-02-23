@@ -3,10 +3,18 @@ use crossterm::event::{KeyEvent, MouseEvent};
 use ratatui::{prelude::*, Frame};
 use std::any::Any;
 
-use super::widgets::{modal::{ModalAction, ModalHandler}, password_modal::PasswordModal};
+use crate::collection::CollectionScope;
+
+use super::widgets::{file_modal::{EditFileModal, NewFileModal}, modal::{ModalAction, ModalHandler}, password_modal::PasswordModal};
 
 pub enum ModalType {
     Password,
+    NewFile,
+    EditFile {
+        name: String,
+        is_folder: bool,
+        current_scope: CollectionScope,
+    },
 }
 
 pub struct ModalManager {
@@ -25,6 +33,10 @@ impl ModalManager {
     pub fn show_modal(&mut self, modal_type: ModalType) {
         let modal: Box<dyn ModalHandler> = match modal_type {
             ModalType::Password => Box::new(PasswordModal::default()),
+            ModalType::NewFile => Box::new(NewFileModal::default()),
+            ModalType::EditFile { name, is_folder, current_scope } => {
+                Box::new(EditFileModal::new(&name, is_folder, current_scope))
+            }
         };
         self.active_modal = Some(modal);
     }

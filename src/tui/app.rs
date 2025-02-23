@@ -7,14 +7,17 @@ use ratatui::widgets::Borders;
 use tui_textarea::TextArea;
 use tui_tree_widget::{TreeItem, TreeState};
 
+use crate::collection::{CollectionScope, SelectedFile};
 use crate::config::ConfigManager;
 use crate::file::{self, parse_selected_file};
+use crate::file_operations::{create_file_or_folder, rename_file_or_folder};
 use crate::query::{self, execute_query};
 use crate::sql::interface::QueryResult;
 
 use super::modal::{ModalEvent, ModalManager, ModalType};
 use super::navigation::{NavigationManager, PaneId};
 use super::ui::UI;
+use super::widgets::file_modal::{EditFileModal, NewFileModal};
 use super::widgets::modal::ModalAction;
 use super::widgets::password_modal::PasswordModal;
 use super::widgets::searchable_textarea::SearchableTextArea;
@@ -24,6 +27,8 @@ pub enum Mode {
     Normal,
     Command,
     Password,
+    NewFile,
+    EditFile,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,6 +36,8 @@ pub enum AppCommand {
     None,
     ExecuteQuery,
     SaveQuery,
+    CreateFile,
+    EditFile,
 }
 
 #[derive(Debug)]
@@ -98,6 +105,26 @@ pub struct QueryState {
     pub pending_async_operation: Option<tokio::task::JoinHandle<AsyncCommandResult>>,
 }
 
+#[derive(Debug)]
+pub struct SelectedFileInfo {
+    pub name: String,
+    pub is_folder: bool,
+    pub scope: CollectionScope,
+}
+
+#[derive(Debug)]
+pub enum FileOperationState {
+    Create {
+        name: String,
+        is_folder: bool,
+        scope: CollectionScope,
+    },
+    Edit {
+        name: String,
+        scope: CollectionScope,
+    },
+}
+
 pub struct App<'a> {
     pub mode: Mode,
     pub should_quit: bool,
@@ -106,6 +133,7 @@ pub struct App<'a> {
     pub query_state: QueryState,
     pub navigation: NavigationManager,
     pub modal_manager: ModalManager,
+    pub file_operation_state: Option<FileOperationState>,
 }
 
 // Core application initialization and state
@@ -146,6 +174,7 @@ impl<'a> App<'a> {
             
             navigation,
             modal_manager: ModalManager::new(),
+            file_operation_state: None,
         };
         
         if let Err(e) = app.load_connections() {
@@ -200,6 +229,10 @@ impl<'a> App<'a> {
         }
         
         Ok(())
+    }
+
+    fn reload_collections(&mut self) {
+        self.ui_state.collection_items = super::panes::collections::CollectionsPane::load_collections();
     }
 
     pub fn next_connection(&mut self) {
@@ -328,6 +361,41 @@ impl<'a> App<'a> {
                 AppCommand::SaveQuery => {
                     self.save_query();
                 },
+                AppCommand::CreateFile => {
+                    if let Some(FileOperationState::Create { name, is_folder, scope }) = &self.file_operation_state {
+                        match create_file_or_folder(name, *is_folder, *scope) {
+                            Ok(_) => {
+                                self.ui_state.message = format!("{} created successfully", 
+                                    if *is_folder { "Folder" } else { "File" });
+                                self.reload_collections();
+                            },
+                            Err(e) => {
+                                self.ui_state.message = format!("Error creating {}: {}", 
+                                    if *is_folder { "folder" } else { "file" }, e);
+                            }
+                        }
+                    }
+                },
+                AppCommand::EditFile => {
+                    if let Some(FileOperationState::Edit { name, scope }) = &self.file_operation_state {
+                        if let Some(old_info) = self.get_selected_file_info() {
+                            match rename_file_or_folder(
+                                &old_info.name, 
+                                name, 
+                                old_info.scope,
+                                *scope
+                            ) {
+                                Ok(_) => {
+                                    self.ui_state.message = "File/folder updated successfully".to_string();
+                                    self.reload_collections();
+                                },
+                                Err(e) => {
+                                    self.ui_state.message = format!("Error updating file/folder: {}", e);
+                                }
+                            }
+                        }
+                    }
+                },
                 AppCommand::None => {},
             }
             
@@ -347,6 +415,16 @@ impl<'a> App<'a> {
             }
             (KeyCode::Char('p'), KeyModifiers::CONTROL) if !self.modal_manager.is_modal_active() => {
                 self.mode = Mode::Command;
+                return Ok(false);
+            },
+            (KeyCode::Char('n'), KeyModifiers::CONTROL) if !self.modal_manager.is_modal_active() => {
+                self.show_new_file_modal();
+                return Ok(false);
+            }
+            (KeyCode::Char('e'), KeyModifiers::CONTROL) if !self.modal_manager.is_modal_active() => {
+                if let Some(selected_file) = self.get_selected_file_info() {
+                    self.show_edit_file_modal(selected_file.name, selected_file.is_folder, selected_file.scope);
+                }
                 return Ok(false);
             }
             _ => {
@@ -425,6 +503,50 @@ impl<'a> App<'a> {
         Ok(())
     }
 
+    pub fn handle_file_modal_result(&mut self) -> Result<()> {
+        match self.mode {
+            Mode::NewFile => {
+                if let Some(modal) = self.modal_manager.get_active_modal_as::<NewFileModal>() {
+                    let (name, file_type, scope) = modal.get_values();
+                    
+                    if name.is_empty() {
+                        self.ui_state.message = "Name cannot be empty".to_string();
+                        return Ok(());
+                    }
+
+                    self.query_state.pending_command = AppCommand::CreateFile;
+                    
+                    self.file_operation_state = Some(FileOperationState::Create {
+                        name,
+                        is_folder: file_type == "folder",
+                        scope,
+                    });
+                }
+            }
+            Mode::EditFile => {
+                if let Some(modal) = self.modal_manager.get_active_modal_as::<EditFileModal>() {
+                    let (name, scope) = modal.get_values();
+                    
+                    if name.is_empty() {
+                        self.ui_state.message = "Name cannot be empty".to_string();
+                        return Ok(());
+                    }
+
+                    self.query_state.pending_command = AppCommand::EditFile;
+                    
+                    self.file_operation_state = Some(FileOperationState::Edit {
+                        name,
+                        scope,
+                    });
+                }
+            }
+            _ => {}
+        }
+
+        self.close_modal();
+        Ok(())
+    }
+
     fn close_modal(&mut self) {
         self.modal_manager.close_modal();
         self.mode = Mode::Normal;
@@ -433,6 +555,51 @@ impl<'a> App<'a> {
     pub fn show_password_prompt(&mut self) {
         self.modal_manager.show_modal(ModalType::Password);
         self.mode = Mode::Password;
+    }
+
+    pub fn show_new_file_modal(&mut self) {
+        self.modal_manager.show_modal(ModalType::NewFile);
+        self.mode = Mode::NewFile;
+    }
+
+    pub fn show_edit_file_modal(&mut self, name: String, is_folder: bool, current_scope: CollectionScope) {
+        self.modal_manager.show_modal(ModalType::EditFile {
+            name,
+            is_folder,
+            current_scope,
+        });
+        self.mode = Mode::EditFile;
+    }
+
+    fn get_selected_file_info(&self) -> Option<SelectedFileInfo> {
+        let selected = self.ui_state.collection_state.selected();
+        if selected.is_empty() {
+            return None;
+        }
+
+        // Parse the selected path to determine if it's a file or folder
+        // and get its current scope
+        if let Some(file) = parse_selected_file(&selected) {
+            match file {
+                SelectedFile::Config(scope) => Some(SelectedFileInfo {
+                    name: "config.yaml".to_string(),
+                    is_folder: false,
+                    scope,
+                }),
+                SelectedFile::Sql { collection, filename, scope } => {
+                    // If filename is empty, it's a collection (folder)
+                    let is_folder = filename.is_empty();
+                    let name = if is_folder { collection } else { filename };
+                    Some(SelectedFileInfo {
+                        name,
+                        is_folder,
+                        scope,
+                    })
+                }
+            }
+        } else {
+            None
+        }
     }
 }
 
@@ -481,7 +648,7 @@ impl<'a> App<'a> {
                             AppCommand::SaveQuery => {
                                 self.save_query();
                             },
-                            AppCommand::None => {},
+                            _ => {},
                         }
     
                         if let Some(msg) = result.message {
