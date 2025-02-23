@@ -90,6 +90,7 @@ pub struct App<'a> {
     pub search: SearchBox<'a>,
     pub query_result: QueryResult,
     pub password_modal: Option<PasswordModal<'a>>,
+    pub current_password: Option<String>,
 
     pub should_quit: bool,
 }
@@ -123,6 +124,7 @@ impl<'a> App<'a> {
             search: SearchBox::default(),
             query_result: QueryResult::default(), 
             password_modal: None,
+            current_password: None,
             should_quit: false,
         }
     }
@@ -146,7 +148,7 @@ impl<'a> App<'a> {
                                             sql,
                                             None,
                                             connection,
-                                            None,
+                                            self.current_password.clone(),
                                         ).await
                                     })
                                 }) {
@@ -303,6 +305,7 @@ impl<'a> App<'a> {
         let password = self.password_modal.as_ref()
             .and_then(|modal| modal.textarea.lines().first())
             .map(|line| line.clone());
+        self.current_password = password.clone();
         self.execute_query_with_password(password);
         self.password_modal = None;
         self.mode = Mode::Normal;
