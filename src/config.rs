@@ -99,7 +99,7 @@ impl ConfigManager {
     }
 
     pub fn load_config(&self) -> Result<Config> {
-        let config_path = self.config_dir.join("connections.yaml");
+        let config_path = self.config_dir.join("config.yaml");
         if !config_path.exists() {
             return Ok(Config { connections: Vec::new() });
         }
@@ -108,7 +108,7 @@ impl ConfigManager {
     }
 
     pub fn save_config(&self, config: &Config) -> Result<()> {
-        let config_path = self.config_dir.join("connections.yaml");
+        let config_path = self.config_dir.join("config.yaml");
         
         let config_to_save = Config {
             connections: config.connections.iter().map(|conn| {

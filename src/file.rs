@@ -4,7 +4,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
-use crate::collection::Collection;
+use crate::collection::{Collection, CollectionScope, SelectedFile};
 
 /// Get the user's config directory for the application
 pub fn get_config_dir() -> Result<PathBuf> {
@@ -51,7 +51,7 @@ pub fn write_file<P: AsRef<Path>>(path: P, content: &str) -> Result<()> {
     }
 }
 
-pub fn load_collections_from_dir(dir: &Path, collections: &mut Vec<Collection>) -> Result<()> {
+pub fn load_collections_from_dir(dir: &Path, collections: &mut Vec<Collection>, scope: CollectionScope) -> Result<()> {
     if !dir.is_dir() {
         return Ok(());
     }
@@ -78,35 +78,30 @@ pub fn load_collections_from_dir(dir: &Path, collections: &mut Vec<Collection>) 
                 }
             }
             
-            collections.push(Collection { name, files });
+            collections.push(Collection { name, files, scope: scope.clone() });
         }
     }
     
     Ok(())
 }
 
-pub fn load_sql_content(collection_name: &str, file_name: &str) -> Result<String> {
-    let local_path = PathBuf::from("./sqli")
-        .join(collection_name)
-        .join(file_name);
+pub fn load_config_content(scope: CollectionScope) -> Result<String> {
+    read_scoped_file(scope, "config.yaml")
+}
+
+pub fn load_sql_with_scope(collection_name: &str, file_name: &str, scope: CollectionScope) -> Result<String> {
+    let relative_path = PathBuf::from(collection_name).join(file_name);
+    let full_path = get_scoped_path(scope, relative_path)?;
     
-    if local_path.exists() {
-        return read_file_to_string(local_path);
+    if !full_path.exists() {
+        return Err(anyhow::anyhow!(
+            "SQL file not found: {} (scope: {:?})", 
+            full_path.display(), 
+            scope,
+        ));
     }
     
-    if let Some(config_dir) = dirs::config_dir() {
-        let user_path = config_dir
-            .join("sqli")
-            .join("collections")
-            .join(collection_name)
-            .join(file_name);
-        
-        if user_path.exists() {
-            return read_file_to_string(user_path);
-        }
-    }
-    
-    anyhow::bail!("SQL file not found: {}/{}", collection_name, file_name)
+    read_file_to_string(&full_path)
 }
 
 pub fn load_yaml_config<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<T> {
@@ -123,4 +118,63 @@ pub fn save_yaml_config<T: Serialize>(path: &Path, config: &T) -> Result<()> {
     let yaml = serde_yaml::to_string(config)?;
     write_file(path, &yaml)?;
     Ok(())
+}
+
+pub fn get_scoped_path(scope: CollectionScope, relative_path: impl AsRef<Path>) -> Result<PathBuf> {
+    let base_path = match scope {
+        CollectionScope::User => dirs::config_dir()
+            .ok_or_else(|| anyhow::anyhow!("Could not determine config directory"))?
+            .join("sqli"),
+        CollectionScope::Cwd => PathBuf::from("./sqli"),
+    };
+    
+    let relative_path = relative_path.as_ref();
+    if relative_path.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+        return Err(anyhow::anyhow!("Invalid path: contains parent directory references"));
+    }
+    
+    Ok(base_path.join(relative_path))
+}
+
+pub fn read_scoped_file(scope: CollectionScope, relative_path: impl AsRef<Path>) -> Result<String> {
+    let path = get_scoped_path(scope, relative_path)?;
+    if path.exists() {
+        read_file_to_string(&path)
+    } else {
+        Err(anyhow::anyhow!("File not found: {:?}", path))
+    }
+}
+
+pub fn parse_selected_file(selected: &[String]) -> Option<SelectedFile> {
+    let file_item = selected.last()?;
+    
+    let scope = if let Some(collection_name) = selected.get(selected.len().saturating_sub(2)) {
+        if collection_name.contains("(user)") {
+            CollectionScope::User
+        } else {
+            CollectionScope::Cwd
+        }
+    } else {
+        if file_item.contains("(user)") {
+            CollectionScope::User
+        } else {
+            CollectionScope::Cwd
+        }
+    };
+
+    if file_item.contains("config.yaml") {
+        Some(SelectedFile::Config(scope))
+    } else if file_item.ends_with(".sql") {
+        let collection = selected.get(selected.len().saturating_sub(2))
+            .and_then(|s| s.split(" (").next())
+            .map(String::from)?;
+        
+        Some(SelectedFile::Sql {
+            collection,
+            filename: file_item.to_string(),
+            scope
+        })
+    } else {
+        None
+    }
 }

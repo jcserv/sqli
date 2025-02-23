@@ -1,8 +1,0 @@
-connections:
-  - name: PostgreSQL
-    type: postgresql
-    host: localhost
-    port: 5432
-    database: go-api-template
-    user: root
-    password: password

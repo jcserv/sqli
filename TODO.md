@@ -5,7 +5,7 @@
   - [ ] display user/local
   - [ ] saving a new file
 - [ ] connections
-  - [ ] selection (left/right arrows?)
+  - [X] selection (left/right arrows?)
   - [ ] configure new --> just load in and allow them to edit in workspace
 - [ ] tests
   - [ ] integration tests for cli

@@ -9,7 +9,7 @@ use ratatui::{
     widgets::{Block, Borders, Scrollbar, ScrollbarOrientation},
 };
 
-use crate::{collection::{build_collection_tree, load_collections}, file::load_sql_content, tui::widgets::file_tree::FileTree};
+use crate::{collection::{build_collection_tree, load_collections, SelectedFile}, file::{load_config_content, load_sql_with_scope, parse_selected_file}, tui::widgets::file_tree::FileTree};
 use crate::tui::app::{App, Mode};
 use crate::tui::navigation::{Navigable, PaneId, FocusType};
 use super::traits::Instructions;
@@ -81,28 +81,29 @@ impl CollectionsPane {
             return Ok(());
         }
 
-        let path = selected.iter().map(|s| s.as_str()).collect::<Vec<_>>();
-        if path.len() < 2 {
-            return Ok(());
-        }
-            
-        let collection_name = path[0];
-        let file_name = path[path.len() - 1];
+        let file = match parse_selected_file(&selected) {
+            Some(file) => file,
+            None => return Ok(())
+        };
 
-        if !file_name.ends_with(".sql") {
-            return Ok(());
-        }
-            
-        match load_sql_content(collection_name, file_name) {
+        let result = match file {
+            SelectedFile::Config(scope) => load_config_content(scope),
+            SelectedFile::Sql { collection, filename, scope } => {
+                load_sql_with_scope(&collection, &filename, scope)
+            }
+        };
+
+        match result {
             Ok(content) => {
                 app.ui_state.workspace.clear();
                 app.ui_state.workspace.insert_str(&content);
             },
             Err(err) => {
-                app.ui_state.message = format!("Error loading SQL file: {}", err);
-            },
+                app.ui_state.message = format!("Error loading file: {}", err);
+            }
         }
-        return Ok(());
+
+        Ok(())
     }
 }
 
