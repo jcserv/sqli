@@ -1,5 +1,5 @@
 use anyhow::{Ok, Result};
-use crossterm::event::{KeyCode, KeyEvent, MouseEvent};
+use crossterm::event::{KeyCode, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     prelude::*,
@@ -134,7 +134,6 @@ impl Navigable for HeaderPane {
     }
     
     fn handle_mouse_event(&mut self, app: &mut App, mouse_event: MouseEvent) -> Result<bool> {
-        use crossterm::event::{MouseEventKind, MouseButton};
         match mouse_event.kind {
             MouseEventKind::Down(MouseButton::Left) => {
                 if is_mouse_event_on_button(mouse_event) {

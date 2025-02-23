@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crossterm::event::{KeyEvent, MouseEvent, KeyCode, KeyModifiers};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::{
     prelude::*,
     layout::Rect,
@@ -289,10 +289,15 @@ impl Navigable for WorkspacePane {
         }
     }
     
-    fn handle_mouse_event(&mut self, app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
-        app.navigation.activate_pane(PaneId::Workspace)?;
-        app.navigation.start_editing(PaneId::Workspace)?;
-        Ok(false)
+    fn handle_mouse_event(&mut self, app: &mut App, mouse_event: MouseEvent) -> Result<bool> {
+        match mouse_event.kind {
+            MouseEventKind::Down(MouseButton::Left) => {
+                app.navigation.activate_pane(PaneId::Workspace)?;
+                app.navigation.start_editing(PaneId::Workspace)?;
+                Ok(false)
+            },
+            _ => { Ok(false) }
+        }
     }
     
     fn activate(&self, app: &mut App) -> Result<bool> {

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crossterm::event::{KeyEvent, MouseEvent, KeyCode};
+use crossterm::event::{KeyCode, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::{
     layout::{Constraint, Rect}, prelude::*, style::{Color, Modifier, Style}, text::Line, widgets::{Block, Borders, Cell, Paragraph, Row, Scrollbar, ScrollbarOrientation, ScrollbarState, Table, TableState}, Frame 
 };
@@ -211,12 +211,17 @@ impl Navigable for ResultsPane {
         }
     }
     
-    fn handle_mouse_event(&mut self, app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
-        if app.navigation.is_active(PaneId::Results) {
-            return self.activate(app)
+    fn handle_mouse_event(&mut self, app: &mut App, mouse_event: MouseEvent) -> Result<bool> {
+        match mouse_event.kind {
+            MouseEventKind::Down(MouseButton::Left) => {
+                if app.navigation.is_active(PaneId::Results) {
+                    return self.activate(app)
+                }
+                app.navigation.activate_pane(PaneId::Results)?;
+                Ok(false)
+            },
+            _ => { Ok(false) }
         }
-        app.navigation.activate_pane(PaneId::Results)?;
-        Ok(false)
     }
     
     fn activate(&self, app: &mut App) -> Result<bool> {
