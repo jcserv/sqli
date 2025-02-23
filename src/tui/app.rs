@@ -162,6 +162,7 @@ impl<'a> App<'a> {
                                             "Query executed successfully in {}ms",
                                             self.query_result.execution_time.as_millis()
                                         );
+                                        _ = self.navigation.activate_pane(PaneId::Results);
                                     }
                                     Err(e) => {
                                         if e.to_string().contains("password authentication failed") {
