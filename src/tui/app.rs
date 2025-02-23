@@ -486,7 +486,7 @@ impl<'a> App<'a> {
             }
             ModalAction::Custom(action) => {
                 match action.as_str() {
-                    "save" => {
+                    "new" => {
                         if let Some(modal) = self.modal_manager.get_active_modal_as::<NewFileModal>() {
                             let (name, file_type, scope) = modal.get_values();
                             
@@ -539,49 +539,6 @@ impl<'a> App<'a> {
             }
             ModalAction::None => {}
         }
-        Ok(())
-    }
-
-    pub fn handle_file_modal_result(&mut self) -> Result<()> {
-        match self.mode {
-            Mode::NewFile => {
-                if let Some(modal) = self.modal_manager.get_active_modal_as::<NewFileModal>() {
-                    let (name, file_type, scope) = modal.get_values();
-                    
-                    if name.is_empty() {
-                        self.ui_state.message = "Name cannot be empty".to_string();
-                        return Ok(());
-                    }
-                    self.query_state.pending_command = AppCommand::CreateFile;
-                    
-                    self.file_operation_state = Some(FileOperationState::Create {
-                        name,
-                        is_folder: file_type == "folder",
-                        scope,
-                    });
-                }
-            }
-            Mode::EditFile => {
-                if let Some(modal) = self.modal_manager.get_active_modal_as::<EditFileModal>() {
-                    let (name, scope) = modal.get_values();
-                    
-                    if name.is_empty() {
-                        self.ui_state.message = "Name cannot be empty".to_string();
-                        return Ok(());
-                    }
-
-                    self.query_state.pending_command = AppCommand::EditFile;
-                    
-                    self.file_operation_state = Some(FileOperationState::Edit {
-                        name,
-                        scope,
-                    });
-                }
-            }
-            _ => {}
-        }
-
-        self.close_modal();
         Ok(())
     }
 

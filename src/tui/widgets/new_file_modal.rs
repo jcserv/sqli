@@ -142,7 +142,7 @@ impl ModalHandler for NewFileModal {
             content_widget,
             buttons: vec![
                 DialogButton::new("Cancel", "cancel").with_theme(RED),
-                DialogButton::new("Save", "save").with_theme(GREEN),
+                DialogButton::new("Save", "new").with_theme(GREEN),
             ],
         };
 
