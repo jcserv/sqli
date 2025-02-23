@@ -7,6 +7,7 @@ use ratatui::widgets::Borders;
 use tui_textarea::TextArea;
 use tui_tree_widget::{TreeItem, TreeState};
 
+use crate::config::ConfigManager;
 use crate::query::{self, execute_query};
 use crate::sql::interface::QueryResult;
 
@@ -89,6 +90,7 @@ impl Default for SearchBox<'_> {
 // Query-related state
 pub struct QueryState {
     pub selected_connection: Option<String>,
+    pub available_connections: Vec<String>, 
     pub current_password: Option<String>, 
     pub query_result: QueryResult,
     pub pending_command: AppCommand,
@@ -119,7 +121,7 @@ impl<'a> App<'a> {
         navigation.register_pane(PaneId::Workspace, 1);
         navigation.register_pane(PaneId::Results, 1);
 
-        Self {
+        let mut app = Self {
             mode: Mode::Normal,
             should_quit: false,
             
@@ -133,7 +135,8 @@ impl<'a> App<'a> {
             },
             
             query_state: QueryState {
-                selected_connection: Some("nopass".to_string()),
+                selected_connection: None,
+                available_connections: Vec::new(),
                 current_password: None,
                 query_result: QueryResult::default(),
                 pending_command: AppCommand::None,
@@ -142,7 +145,13 @@ impl<'a> App<'a> {
             
             navigation,
             modal_manager: ModalManager::new(),
+        };
+        
+        if let Err(e) = app.load_connections() {
+            app.ui_state.message = format!("Error loading connections: {}", e);
         }
+
+        app
     }
 
     pub fn is_header_active(&self) -> bool {
@@ -173,6 +182,60 @@ impl<'a> App<'a> {
         } else {
             false
         }
+    }
+}
+
+// Connection management
+impl<'a> App<'a> {
+    pub fn load_connections(&mut self) -> Result<()> {
+        let config_manager = ConfigManager::new()?;
+        let connections = config_manager.list_connections()?;
+        
+        if !connections.is_empty() {
+            self.query_state.available_connections = connections;
+            if self.query_state.selected_connection.is_none() {
+                self.query_state.selected_connection = Some(self.query_state.available_connections[0].clone());
+            }
+        }
+        
+        Ok(())
+    }
+
+    pub fn next_connection(&mut self) {
+        if self.query_state.available_connections.is_empty() {
+            return;
+        }
+
+        let current_idx = self.query_state.selected_connection
+            .as_ref()
+            .and_then(|current| self.query_state.available_connections.iter().position(|x| x == current))
+            .unwrap_or(0);
+
+        let next_idx = (current_idx + 1) % self.query_state.available_connections.len();
+        self.query_state.selected_connection = Some(self.query_state.available_connections[next_idx].clone());
+    }
+
+    pub fn previous_connection(&mut self) {
+        if self.query_state.available_connections.is_empty() {
+            return;
+        }
+
+        let current_idx = self.query_state.selected_connection
+            .as_ref()
+            .and_then(|current| self.query_state.available_connections.iter().position(|x| x == current))
+            .unwrap_or(0);
+
+        let prev_idx = if current_idx == 0 {
+            self.query_state.available_connections.len() - 1
+        } else {
+            current_idx - 1
+        };
+        
+        self.query_state.selected_connection = Some(self.query_state.available_connections[prev_idx].clone());
+    }
+
+    pub fn get_current_connection(&self) -> Option<String> {
+        self.query_state.selected_connection.clone()
     }
 }
 

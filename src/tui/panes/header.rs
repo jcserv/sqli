@@ -54,6 +54,10 @@ impl HeaderPane {
             FocusType::Active => Style::default().fg(Color::LightBlue),
             FocusType::Inactive => Style::default().fg(Color::White),
         };
+
+        let is_editing = focus_type == FocusType::Editing;
+        let prefix = if is_editing { "◀ " } else { "" };
+        let suffix = if is_editing { " ▶" } else { "" };
         
         let connection_block = Block::default()
             .title("Connection")
@@ -62,8 +66,25 @@ impl HeaderPane {
             .border_style(focus_style);
         
         frame.render_widget(&connection_block, conn_area);
-        let connection_name = app.query_state.selected_connection.clone().unwrap_or_else(|| "No connection selected".to_string());
-        frame.render_widget(Span::raw(connection_name), connection_block.inner(conn_area));
+
+        let connection_name = match app.get_current_connection() {
+            Some(name) => format!("{prefix}{name}{suffix}"),
+            None => "No connection selected".to_string(),
+        };
+
+        let connection_style = if is_editing {
+            Style::default().fg(Color::LightBlue).bold()
+        } else {
+            Style::default()
+        };
+
+        frame.render_widget(
+            Paragraph::new(connection_name)
+                .style(connection_style)
+                .alignment(Alignment::Left),
+            connection_block.inner(conn_area)
+        );
+
         self.render_connection_button(frame, connection_block.inner(conn_area));
     }
 
@@ -117,7 +138,6 @@ impl Instructions for HeaderPane {
     }
 }
 
-
 impl Navigable for HeaderPane {
     fn handle_key_event(&mut self, app: &mut App, key_event: KeyEvent) -> Result<bool> {
         if app.mode != Mode::Normal || !app.navigation.is_active(PaneId::Header) {
@@ -142,6 +162,14 @@ impl Navigable for HeaderPane {
                 match key_event.code {
                     KeyCode::Esc => {
                         self.deactivate(app)
+                    },
+                    KeyCode::Left => {
+                        app.previous_connection();
+                        Ok(false)
+                    },
+                    KeyCode::Right => {
+                        app.next_connection();
+                        Ok(false)
                     },
                     _ => Ok(false)
                 }
