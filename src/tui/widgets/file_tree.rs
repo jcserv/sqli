@@ -2,7 +2,7 @@ use anyhow::Result;
 use crossterm::event::{MouseEvent, MouseButton, MouseEventKind};
 use ratatui::{
     layout::{Position, Rect},
-    widgets::{StatefulWidget, Widget},
+    widgets::StatefulWidget,
 };
 use tui_tree_widget::{Tree, TreeItem, TreeState};
 
@@ -89,12 +89,12 @@ where
     }
 }
 
-impl<'a, Identifier> Widget for FileTree<'a, Identifier>
-where
-    Identifier: Clone + Default + Eq + core::hash::Hash,
-{
-    fn render(self, area: Rect, buf: &mut ratatui::buffer::Buffer) {
-        let mut state = TreeState::default();
-        StatefulWidget::render(self, area, buf, &mut state);
-    }
-}
+// impl<'a, Identifier> Widget for FileTree<'a, Identifier>
+// where
+//     Identifier: Clone + Default + Eq + core::hash::Hash,
+// {
+//     fn render(self, area: Rect, buf: &mut ratatui::buffer::Buffer) {
+//         let mut state = TreeState::default();
+//         StatefulWidget::render(self, area, buf, &mut state);
+//     }
+// }

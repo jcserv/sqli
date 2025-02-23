@@ -26,7 +26,6 @@ use super::widgets::searchable_textarea::SearchableTextArea;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Mode {
     Normal,
-    Command,
     Password,
     NewFile,
     EditFile,
@@ -70,7 +69,6 @@ pub struct UIState<'a> {
     pub collection_items: Vec<TreeItem<'a, String>>,
     pub workspace: SearchableTextArea<'a>,
     pub search: SearchBox<'a>,
-    pub command_input: String,
 }
 
 // Handles the search interface state
@@ -161,7 +159,6 @@ impl<'a> App<'a> {
                 collection_items,
                 workspace,
                 search: SearchBox::default(),
-                command_input: String::new(),
             },
             
             query_state: QueryState {
@@ -414,10 +411,6 @@ impl<'a> App<'a> {
                 _ = self.navigation.cycle_pane(false);
                 return Ok(false);
             }
-            (KeyCode::Char('p'), KeyModifiers::CONTROL) if !self.modal_manager.is_modal_active() => {
-                self.mode = Mode::Command;
-                return Ok(false);
-            },
             (KeyCode::Char('n'), KeyModifiers::CONTROL) if !self.modal_manager.is_modal_active() => {
                 self.show_new_file_modal();
                 return Ok(false);

@@ -74,11 +74,6 @@ impl<'a> Button<'a> {
         self
     }
 
-    pub const fn state(mut self, state: State) -> Self {
-        self.state = state;
-        self
-    }
-
     pub fn set_area(&mut self, area: Rect) {
         self.area = Some(area);
     }

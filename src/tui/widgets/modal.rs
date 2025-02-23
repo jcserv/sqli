@@ -30,7 +30,6 @@ pub struct DialogButton<'a> {
     pub label: &'a str,
     pub theme: Theme,
     pub action: String,
-    pub rect: Option<Rect>,
 }
 
 impl<'a> DialogButton<'a> {
@@ -39,7 +38,6 @@ impl<'a> DialogButton<'a> {
             label,
             theme: BLUE,
             action: action.into(),
-            rect: None,
         }
     }
 

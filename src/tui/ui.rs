@@ -2,7 +2,7 @@ use anyhow::Result;
 use crossterm::event::{KeyEvent, MouseEvent};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Style, Stylize},
+    style::{Color, Style},
     text::Line,
     widgets::{Block, Borders, Paragraph},
     Frame,
@@ -122,14 +122,6 @@ impl UI {
                     Line::from("")
                 }
             },
-            Mode::Command => Line::from(vec![
-                " ESC ".blue().bold(),
-                "Normal ".white().into(),
-                " Enter ".blue().bold(),
-                "Execute ".white().into(),
-                " ^C ".blue().bold(),
-                "Quit ".white().into(),
-            ]),
             _ => Line::from(""),
         };
         
