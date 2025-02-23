@@ -12,7 +12,6 @@ pub fn create_file_or_folder(name: &str, is_folder: bool, scope: CollectionScope
         CollectionScope::Cwd => PathBuf::from("./sqli"),
     };
 
-    // Create base directory if it doesn't exist
     if !base_path.exists() {
         fs::create_dir_all(&base_path)?;
     }
@@ -26,17 +25,14 @@ pub fn create_file_or_folder(name: &str, is_folder: bool, scope: CollectionScope
     if is_folder {
         fs::create_dir_all(&target_path)?;
     } else {
-        // Create parent directories if they don't exist
         if let Some(parent) = target_path.parent() {
             if !parent.exists() {
                 fs::create_dir_all(parent)?;
             }
         }
-        // Create empty file
         fs::write(&target_path, "")?;
     }
 
-    // Set proper permissions on Unix systems
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -73,14 +69,12 @@ pub fn rename_file_or_folder(old_name: &str, new_name: &str, current_scope: Coll
         return Err(anyhow::anyhow!("Target file or folder already exists"));
     }
 
-    // Create parent directory if needed
     if let Some(parent) = new_path.parent() {
         if !parent.exists() {
             fs::create_dir_all(parent)?;
         }
     }
 
-    // If moving between different scopes, we need to copy+delete
     if current_scope != new_scope {
         if old_path.is_dir() {
             copy_dir_recursive(&old_path, &new_path)?;
@@ -90,11 +84,9 @@ pub fn rename_file_or_folder(old_name: &str, new_name: &str, current_scope: Coll
             fs::remove_file(&old_path)?;
         }
     } else {
-        // Same scope, can just rename
         fs::rename(&old_path, &new_path)?;
     }
 
-    // Set proper permissions on Unix systems
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;

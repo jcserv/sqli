@@ -25,79 +25,6 @@ struct NewFileContent<'a> {
     focused_element: usize,
 }
 
-impl<'a> Widget for NewFileContent<'a> {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .margin(1)
-            .constraints([
-                Constraint::Length(3), // Name input
-                Constraint::Length(3), // Type selector
-                Constraint::Length(3), // Scope selector
-            ])
-            .split(area);
-
-        Widget::render(self.name_input, chunks[0], buf);
-        
-        let type_selector = self.type_selector.clone();
-        let scope_selector = self.scope_selector.clone();
-        
-        Widget::render(type_selector, chunks[1], buf);
-        Widget::render(scope_selector, chunks[2], buf);
-
-        let focus_style = Style::default().fg(Color::Yellow);
-        match self.focused_element {
-            0 => buf.set_style(chunks[0], focus_style),
-            1 => buf.set_style(chunks[1], focus_style),
-            2 => buf.set_style(chunks[2], focus_style),
-            _ => {}
-        }
-    }
-}
-
-struct EditFileContent<'a> {
-    name_input: &'a tui_textarea::TextArea<'a>,
-    scope_selector: &'a RadioGroup<'a>,
-    is_folder: bool,
-    focused_element: usize,
-}
-
-impl<'a> Widget for EditFileContent<'a> {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        let mut constraints = vec![Constraint::Length(3)]; // Name input
-        if self.is_folder {
-            constraints.push(Constraint::Length(3)); // Scope selector for folders
-        }
-
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .margin(1)
-            .constraints(constraints)
-            .split(area);
-
-        Widget::render(self.name_input, chunks[0], buf);
-        
-        if self.is_folder {
-            let scope_selector = self.scope_selector.clone();
-            Widget::render(scope_selector, chunks[1], buf);
-        }
-
-        let focus_style = Style::default().fg(Color::Yellow);
-        match self.focused_element {
-            0 => buf.set_style(chunks[0], focus_style),
-            1 if self.is_folder => buf.set_style(chunks[1], focus_style),
-            _ => {}
-        }
-    }
-}
-
-pub struct NewFileModal {
-    name_input: tui_textarea::TextArea<'static>,
-    type_selector: RadioGroup<'static>,
-    scope_selector: RadioGroup<'static>,
-    focused_element: usize,
-}
-
 impl Default for NewFileModal {
     fn default() -> Self {
         let mut name_input = tui_textarea::TextArea::default();
@@ -132,6 +59,43 @@ impl Default for NewFileModal {
             focused_element: 0,
         }
     }
+}
+
+
+impl<'a> Widget for NewFileContent<'a> {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(3),  // Name input
+                Constraint::Length(1),  // Gap
+                Constraint::Length(1),  // Type selector
+                Constraint::Length(1),  // Scope selector
+            ])
+            .split(area);
+
+        let type_selector = self.type_selector.clone();
+        let scope_selector = self.scope_selector.clone();
+
+        Widget::render(self.name_input, chunks[0], buf);
+        Widget::render(type_selector, chunks[2], buf);
+        Widget::render(scope_selector, chunks[3], buf);
+
+        let focus_style = Style::default().fg(Color::Yellow);
+        match self.focused_element {
+            0 => buf.set_style(chunks[0], focus_style),
+            1 => buf.set_style(chunks[2], focus_style),
+            2 => buf.set_style(chunks[3], focus_style),
+            _ => {}
+        }
+    }
+}
+
+pub struct NewFileModal {
+    name_input: tui_textarea::TextArea<'static>,
+    type_selector: RadioGroup<'static>,
+    scope_selector: RadioGroup<'static>,
+    focused_element: usize,
 }
 
 impl ModalHandler for NewFileModal {
@@ -227,9 +191,9 @@ impl NewFileModal {
     }
 }
 
-pub struct EditFileModal {
-    name_input: tui_textarea::TextArea<'static>,
-    scope_selector: RadioGroup<'static>,
+struct EditFileContent<'a> {
+    name_input: &'a tui_textarea::TextArea<'a>,
+    scope_selector: &'a RadioGroup<'a>,
     is_folder: bool,
     focused_element: usize,
 }
@@ -266,12 +230,12 @@ impl EditFileModal {
             focused_element: 0,
         }
     }
-
+    
     pub fn get_values(&self) -> (String, CollectionScope) {
         let name = self.name_input.lines().first()
             .map(|s| s.to_string())
             .unwrap_or_default();
-            
+
         let scope = match self.scope_selector.selected_value().as_str() {
             "user" => CollectionScope::User,
             _ => CollectionScope::Cwd,
@@ -279,6 +243,47 @@ impl EditFileModal {
 
         (name, scope)
     }
+}
+
+impl<'a> Widget for EditFileContent<'a> {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let mut constraints = vec![
+            Constraint::Length(3),  // Name input
+        ];
+        
+        if self.is_folder {
+            constraints.extend_from_slice(&[
+                Constraint::Length(1),  // Gap
+                Constraint::Length(1),  // Scope selector
+            ]);
+        }
+
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(constraints)
+            .split(area);
+
+        Widget::render(self.name_input, chunks[0], buf);
+        
+        if self.is_folder {
+            let scope_selector = self.scope_selector.clone();
+            Widget::render(scope_selector, chunks[2], buf);
+        }
+
+        let focus_style = Style::default().fg(Color::Yellow);
+        match self.focused_element {
+            0 => buf.set_style(chunks[0], focus_style),
+            1 if self.is_folder => buf.set_style(chunks[2], focus_style),
+            _ => {}
+        }
+    }
+}
+
+pub struct EditFileModal {
+    name_input: tui_textarea::TextArea<'static>,
+    scope_selector: RadioGroup<'static>,
+    is_folder: bool,
+    focused_element: usize,
 }
 
 impl ModalHandler for EditFileModal {

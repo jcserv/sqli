@@ -100,7 +100,7 @@ where
         let button_constraints: Vec<Constraint> = std::iter::once(Constraint::Percentage((100 - self.content.buttons.len() as u16 * 20) / 2))
             .chain(self.content.buttons.iter().flat_map(|_| {
                 vec![
-                    Constraint::Length(12),  // Button width
+                    Constraint::Length(8),  // Button width
                     Constraint::Length(2),   // Gap between buttons
                 ]
             }))

@@ -125,6 +125,10 @@ impl Instructions for CollectionsPane {
                 "Navigate ".white().into(),
                 " Space ".blue().bold(),
                 "Confirm ".white().into(),
+                " ^N ".blue().bold(),
+                "New ".white().into(),
+                " ^E ".blue().bold(),
+                "Edit ".white().into(),
                 " ^C ".blue().bold(),
                 "Quit ".white().into(),
             ])
