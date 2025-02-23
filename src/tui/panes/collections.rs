@@ -1,18 +1,25 @@
 use anyhow::Result;
-use crossterm::event::{KeyCode, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
+use crossterm::event::{KeyCode, KeyEvent, MouseEvent};
 use ratatui::{
     prelude::*,
+    style::{Color, Style},
+    text::Line,
+    widgets::{Scrollbar, ScrollbarOrientation},
     Frame,
-    layout::Rect, 
-    style::{Color, Style}, 
-    text::Line, 
-    widgets::{Block, Borders, Scrollbar, ScrollbarOrientation},
 };
 
-use crate::{collection::{build_collection_tree, load_collections, SelectedFile}, config::CONFIG_FILE_NAME, file::{self, FileSystem}, tui::widgets::file_tree::FileTree};
-use crate::tui::app::{App, Mode};
-use crate::tui::navigation::{Navigable, PaneId, FocusType};
-use super::traits::Instructions;
+use crate::{
+    collection::{build_collection_tree, load_collections, SelectedFile},
+    config::CONFIG_FILE_NAME,
+    file::{self, FileSystem},
+    tui::{
+        widgets::file_tree::FileTree,
+        navigation::PaneId,
+        app::App,
+    },
+};
+
+use super::pane::{Pane, PaneExt};
 
 pub struct CollectionsPane {
     last_area: Option<Rect>,
@@ -23,46 +30,6 @@ impl CollectionsPane {
         Self {
             last_area: None,
         }
-    }
-
-    pub fn render(&mut self, app: &mut App, frame: &mut Frame, area: Rect) {
-        self.last_area = Some(area);
-
-        let focus_type = if let Some(info) = app.navigation.get_pane_info(PaneId::Collections) {
-            info.focus_type
-        } else {
-            FocusType::Inactive
-        };
-
-        let focus_style = match focus_type {
-            FocusType::Editing => Style::default().fg(Color::LightBlue).bold(),
-            FocusType::Active => Style::default().fg(Color::LightBlue),
-            FocusType::Inactive => Style::default().fg(Color::White),
-        };
-
-        let tree = FileTree::new(&app.ui_state.collection_items)
-            .expect("all item identifiers are unique")
-            .block(
-                Block::default()
-                    .title("Collections")
-                    .title_style(focus_style)
-                    .borders(Borders::ALL)
-                    .border_style(focus_style)
-            )
-            .highlight_style(
-                Style::default()
-                    .fg(Color::Black)
-                    .bg(Color::LightBlue)
-                    .bold()
-            )
-            .experimental_scrollbar(Some(
-                Scrollbar::new(ScrollbarOrientation::VerticalRight)
-                    .begin_symbol(None)
-                    .track_symbol(None)
-                    .end_symbol(None)
-            ));
-
-        frame.render_stateful_widget(tree, area, &mut app.ui_state.collection_state);
     }
 
     pub fn load_collections() -> Vec<tui_tree_widget::TreeItem<'static, String>> {
@@ -111,17 +78,38 @@ impl CollectionsPane {
     }
 }
 
-impl Instructions for CollectionsPane {
-    fn get_instructions(&self, app: &App) -> Line {
-        if app.mode != Mode::Normal {
-            return Line::from("");
-        }
-        
-        if !app.is_collections_active() {
-            return Line::from("");
-        }
-        
-        if app.is_pane_in_edit_mode(PaneId::Collections) {
+impl Pane for CollectionsPane {
+    fn pane_id(&self) -> PaneId {
+        PaneId::Collections
+    }
+
+    fn title(&self) -> &'static str {
+        "Collections"
+    }
+
+    fn render_content(&mut self, app: &mut App, frame: &mut Frame, area: Rect) {
+        self.last_area = Some(area);
+
+        let tree = FileTree::new(&app.ui_state.collection_items)
+            .expect("all item identifiers are unique")
+            .highlight_style(
+                Style::default()
+                    .fg(Color::Black)
+                    .bg(Color::LightBlue)
+                    .bold()
+            )
+            .experimental_scrollbar(Some(
+                Scrollbar::new(ScrollbarOrientation::VerticalRight)
+                    .begin_symbol(None)
+                    .track_symbol(None)
+                    .end_symbol(None)
+            ));
+
+        frame.render_stateful_widget(tree, area, &mut app.ui_state.collection_state);
+    }
+
+    fn get_custom_instructions(&self, _app: &App, is_editing: bool) -> Line<'static> {
+        if is_editing {
             Line::from(vec![
                 " Esc ".blue().bold(),
                 "Return ".white().into(),
@@ -147,93 +135,63 @@ impl Instructions for CollectionsPane {
             ])
         }
     }
-}
 
-impl Navigable for CollectionsPane {
-    fn handle_key_event(&mut self, app: &mut App, key_event: KeyEvent) -> Result<bool> {
-        if app.mode != Mode::Normal || !app.navigation.is_active(PaneId::Collections) {
-            return Ok(false);
-        }
-        
-        let info = app.navigation.get_pane_info(PaneId::Collections).unwrap();
-        match info.focus_type {
-            FocusType::Active => {
-                match key_event.code {
-                    KeyCode::Enter | KeyCode::Char(' ') => {
-                        self.activate(app)
-                    },
-                    KeyCode::Up => {
-                        app.navigation.activate_pane(PaneId::Header)?;
-                        Ok(false)
-                    },
-                    KeyCode::Right => {
-                        app.navigation.activate_pane(PaneId::Workspace)?;
-                        Ok(false)
-                    }
-                    _ => Ok(false)
-                }
+    fn handle_edit_mode_key(&mut self, app: &mut App, key: KeyEvent) -> Result<bool> {
+        match key.code {
+            KeyCode::Esc => {
+                self.deactivate(app)
             },
-            FocusType::Editing => {
-                match key_event.code {
-                    KeyCode::Esc => {
-                        self.deactivate(app)
-                    },
-                    KeyCode::Enter | KeyCode::Char(' ') => {
-                        app.ui_state.collection_state.toggle_selected();
-                        self.handle_selection(app)?;
-                        Ok(false)
-                    },
-                    KeyCode::Left => {
-                        app.ui_state.collection_state.key_left();
-                        Ok(false)
-                    },
-                    KeyCode::Right => {
-                        app.ui_state.collection_state.key_right();
-                        Ok(false)
-                    },
-                    KeyCode::Down => {
-                        app.ui_state.collection_state.key_down();
-                        Ok(false)
-                    },
-                    KeyCode::Up => {
-                        app.ui_state.collection_state.key_up();
-                        Ok(false)
-                    },
-                    _ => Ok(false)
-                }
+            KeyCode::Enter | KeyCode::Char(' ') => {
+                app.ui_state.collection_state.toggle_selected();
+                self.handle_selection(app)?;
+                Ok(false)
+            },
+            KeyCode::Left => {
+                app.ui_state.collection_state.key_left();
+                Ok(false)
+            },
+            KeyCode::Right => {
+                app.ui_state.collection_state.key_right();
+                Ok(false)
+            },
+            KeyCode::Down => {
+                app.ui_state.collection_state.key_down();
+                Ok(false)
+            },
+            KeyCode::Up => {
+                app.ui_state.collection_state.key_up();
+                Ok(false)
             },
             _ => Ok(false)
         }
     }
-    
-    fn handle_mouse_event(&mut self, app: &mut App, mouse_event: MouseEvent) -> Result<bool> {
-        match mouse_event.kind {
-            MouseEventKind::Down(MouseButton::Left) => {
-                app.navigation.activate_pane(PaneId::Collections)?;
 
-                if let Some(area) = self.last_area {
-                    let tree = FileTree::new(&app.ui_state.collection_items).expect("all item identifiers are unique");
-                    if tree.handle_mouse_event(&mut app.ui_state.collection_state, mouse_event, area)? {
-                        app.navigation.start_editing(PaneId::Collections)?;
-                        self.handle_selection(app)?;
-                        return Ok(false);
-                    }
-                }
-
-                app.navigation.start_editing(PaneId::Collections)?;
+    fn handle_active_mode_key(&mut self, app: &mut App, key: KeyEvent) -> Result<bool> {
+        match key.code {
+            KeyCode::Enter | KeyCode::Char(' ') => {
+                self.activate(app)
+            },
+            KeyCode::Up => {
+                app.navigation.activate_pane(PaneId::Header)?;
                 Ok(false)
             },
-            _ => { Ok(false) }
+            KeyCode::Right => {
+                app.navigation.activate_pane(PaneId::Workspace)?;
+                Ok(false)
+            },
+            _ => Ok(false)
         }
     }
-    
-    fn activate(&self, app: &mut App) -> Result<bool> {
-        app.navigation.start_editing(PaneId::Collections)?;
-        Ok(false)
-    }
-    
-    fn deactivate(&self, app: &mut App) -> Result<bool> {
-        app.navigation.stop_editing(PaneId::Collections)?;
+
+    fn handle_custom_mouse_event(&mut self, app: &mut App, mouse_event: MouseEvent) -> Result<bool> {
+        if let Some(area) = self.last_area {
+            let tree = FileTree::new(&app.ui_state.collection_items).expect("all item identifiers are unique");
+            if tree.handle_mouse_event(&mut app.ui_state.collection_state, mouse_event, area)? {
+                app.navigation.start_editing(PaneId::Collections)?;
+                self.handle_selection(app)?;
+                return Ok(false);
+            }
+        }
         Ok(false)
     }
 }

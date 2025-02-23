@@ -1,6 +1,7 @@
 use anyhow::Result;
 use crossterm::event::{KeyEvent, MouseEvent};
 use ratatui::{
+    prelude::*,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::Line,
@@ -10,13 +11,9 @@ use ratatui::{
 
 use super::{
     app::{App, Mode}, 
-    navigation::{PaneId, Navigable},
+    navigation::PaneId,
     panes::{
-        collections::CollectionsPane, 
-        header::HeaderPane,
-        results::ResultsPane, 
-        workspace::WorkspacePane, 
-        traits::Instructions
+        collections::CollectionsPane, header::HeaderPane, pane::PaneExt, results::ResultsPane, workspace::WorkspacePane 
     },
 };
 
@@ -42,22 +39,32 @@ impl UI {
     }
 
     pub fn render(&mut self, app: &mut App, frame: &mut Frame) {
-        let search_height = if app.ui_state.search.open { 3 } else { 0 };
-
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(4),     
+                Constraint::Length(1),     // App title bar
+                Constraint::Length(3),     
                 Constraint::Min(0),        
                 Constraint::Length(3),     // Instructions area  
                 Constraint::Length(1),     // Status message area
             ])
             .split(frame.area());
 
-        let top_bar = chunks[0];
-        let main_area = chunks[1];
-        let instructions_area = chunks[2];
-        let status_area = chunks[3];
+        let app_info_line = Line::from(vec![
+            " sqli ".white().bold(),
+            "v0.1.0".dark_gray().into(),
+        ]);
+
+        let app_info = chunks[0];
+        let top_bar = chunks[1];
+        let main_area = chunks[2];
+        let instructions_area = chunks[3];
+        let status_area = chunks[4];
+
+        frame.render_widget(
+            Paragraph::new(app_info_line).style(Style::default()),
+            app_info
+        );
 
         self.header_pane.render(app, frame, top_bar);
 
@@ -84,7 +91,7 @@ impl UI {
         let results_area = right_chunks[1];
 
         self.collections_pane.render(app, frame, left_panel);
-        self.workspace_pane.render(app, frame, workspace_area, search_height);
+        self.workspace_pane.render(app, frame, workspace_area);
         self.results_pane.render(app, frame, results_area);
         self.render_status_message(app, frame, status_area);
         self.render_instructions(app, frame, instructions_area);
