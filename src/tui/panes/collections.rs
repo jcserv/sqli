@@ -184,8 +184,6 @@ impl Pane for CollectionsPane {
     }
 
     fn handle_custom_mouse_event(&mut self, app: &mut App, mouse_event: MouseEvent) -> Result<bool> {
-        app.navigation.activate_pane(PaneId::Collections)?;
-
         if let Some(area) = self.last_area {
             let tree = FileTree::new(&app.ui_state.collection_items).expect("all item identifiers are unique");
             if tree.handle_mouse_event(&mut app.ui_state.collection_state, mouse_event, area)? {
@@ -194,8 +192,6 @@ impl Pane for CollectionsPane {
                 return Ok(false);
             }
         }
-
-        app.navigation.start_editing(PaneId::Collections)?;
         Ok(false)
     }
 }

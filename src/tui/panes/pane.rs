@@ -111,13 +111,17 @@ pub trait PaneExt: Pane {
     fn handle_mouse_event(&mut self, app: &mut App, mouse_event: MouseEvent) -> Result<bool> {
         match mouse_event.kind {
             MouseEventKind::Down(MouseButton::Left) => {
+                if self.handle_custom_mouse_event(app, mouse_event)? {
+                    return Ok(true);
+                }
+
                 if app.navigation.is_active(self.pane_id()) {
-                    return self.handle_activate(app);
+                    return self.activate(app);
                 }
                 app.navigation.activate_pane(self.pane_id())?;
-                self.handle_activate(app)
+                Ok(false)
             },
-            _ => Ok(false)
+            _ => self.handle_custom_mouse_event(app, mouse_event)
         }
     }
 

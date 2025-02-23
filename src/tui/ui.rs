@@ -10,12 +10,9 @@ use ratatui::{
 
 use super::{
     app::{App, Mode}, 
-    navigation::{PaneId, Navigable},
+    navigation::PaneId,
     panes::{
-        collections::CollectionsPane, 
-        header::HeaderPane,
-        results::ResultsPane, 
-        workspace::WorkspacePane, 
+        collections::CollectionsPane, header::HeaderPane, pane::PaneExt, results::ResultsPane, workspace::WorkspacePane 
     },
 };
 
@@ -41,8 +38,6 @@ impl UI {
     }
 
     pub fn render(&mut self, app: &mut App, frame: &mut Frame) {
-        let search_height = if app.ui_state.search.open { 3 } else { 0 };
-
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -83,7 +78,7 @@ impl UI {
         let results_area = right_chunks[1];
 
         self.collections_pane.render(app, frame, left_panel);
-        self.workspace_pane.render(app, frame, workspace_area, search_height);
+        self.workspace_pane.render(app, frame, workspace_area);
         self.results_pane.render(app, frame, results_area);
         self.render_status_message(app, frame, status_area);
         self.render_instructions(app, frame, instructions_area);

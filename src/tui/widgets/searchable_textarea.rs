@@ -46,8 +46,6 @@ impl<'a> SearchableTextArea<'a> {
     pub fn init(&mut self) {
         self.set_block(
             Block::default()
-                .borders(Borders::ALL)
-                .title("Workspace")
         );
         self.set_line_number_style(Style::default().bg(Color::DarkGray));
         self.set_cursor_line_style(Style::default());

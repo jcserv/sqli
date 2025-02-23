@@ -51,14 +51,6 @@ impl Pane for WorkspacePane {
             area.height.saturating_sub(search_height)
         );
         
-        let search_area = Rect::new(
-            area.x,
-            area.y,
-            area.width,
-            search_height
-        );
-        
-        frame.render_widget(&app.ui_state.search.textarea, search_area);
         frame.render_widget(&workspace_widget, workspace_area);
     }
 

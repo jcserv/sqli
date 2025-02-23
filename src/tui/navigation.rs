@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use anyhow::Result;
-use crossterm::event::{KeyEvent, MouseEvent};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PaneId {
@@ -251,11 +250,4 @@ impl NavigationManager {
         
         Ok(())
     }
-}
-
-pub trait Navigable {
-    fn handle_key_event(&mut self, app: &mut crate::tui::app::App, key_event: KeyEvent) -> Result<bool>;
-    fn handle_mouse_event(&mut self, app: &mut crate::tui::app::App, mouse_event: MouseEvent) -> Result<bool>;
-    fn activate(&self, app: &mut crate::tui::app::App) -> Result<bool>;
-    fn deactivate(&self, app: &mut crate::tui::app::App) -> Result<bool>;
 }

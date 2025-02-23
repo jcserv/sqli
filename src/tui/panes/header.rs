@@ -65,6 +65,7 @@ impl Pane for HeaderPane {
         "Connection"
     }
 
+    // TODO: Fix the layout
     fn render_content(&mut self, app: &mut App, frame: &mut Frame, area: Rect) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
@@ -166,13 +167,8 @@ impl Pane for HeaderPane {
             MouseEventKind::Down(MouseButton::Left) => {
                 if self.is_mouse_event_on_button(mouse_event) {
                     app.query_state.pending_command = AppCommand::ExecuteQuery;
-                    return Ok(false);
+                    return Ok(true);
                 }
-
-                if app.navigation.is_active(self.pane_id()) {
-                    return self.activate(app);
-                }
-                app.navigation.activate_pane(self.pane_id())?;
                 Ok(false)
             },
             _ => {
