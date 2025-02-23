@@ -269,7 +269,7 @@ impl<'a> App<'a> {
         }
     }
 
-    pub fn handle_mouse(&mut self, ui: &super::ui::UI, mouse_event: MouseEvent) -> Result<bool> {
+    pub fn handle_mouse(&mut self, ui: &mut super::ui::UI, mouse_event: MouseEvent) -> Result<bool> {
         if self.modal_manager.is_modal_active() {
             let terminal_area = crossterm::terminal::size()
                 .map(|(w, h)| Rect::new(0, 0, w, h))

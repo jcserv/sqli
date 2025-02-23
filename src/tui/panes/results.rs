@@ -211,7 +211,7 @@ impl Navigable for ResultsPane {
         }
     }
     
-    fn handle_mouse_event(&self, app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
+    fn handle_mouse_event(&mut self, app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
         if app.navigation.is_active(PaneId::Results) {
             return self.activate(app)
         }

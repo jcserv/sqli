@@ -289,7 +289,7 @@ impl Navigable for WorkspacePane {
         }
     }
     
-    fn handle_mouse_event(&self, app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
+    fn handle_mouse_event(&mut self, app: &mut App, _mouse_event: MouseEvent) -> Result<bool> {
         app.navigation.activate_pane(PaneId::Workspace)?;
         app.navigation.start_editing(PaneId::Workspace)?;
         Ok(false)

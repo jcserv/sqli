@@ -150,31 +150,27 @@ impl UI {
         }
     }
 
-    pub fn handle_mouse_event(&self, app: &mut App, mouse_event: MouseEvent) -> Result<bool> {
-        use crossterm::event::{MouseEventKind, MouseButton};
+    pub fn handle_mouse_event(&mut self, app: &mut App, mouse_event: MouseEvent) -> Result<bool> {        
+        let terminal_size = crossterm::terminal::size().unwrap_or((80, 24));
+        let width = terminal_size.0 as usize;
+        let height = terminal_size.1 as usize;
         
-        if let MouseEventKind::Down(MouseButton::Left) = mouse_event.kind {
-            let terminal_size = crossterm::terminal::size().unwrap_or((80, 24));
-            let width = terminal_size.0 as usize;
-            let height = terminal_size.1 as usize;
+        let x = mouse_event.column as usize;
+        let y = mouse_event.row as usize;
+        
+        if y < 4 {
+            return self.header_pane.handle_mouse_event(app, mouse_event);
+        }
+        
+        if y > 1 && y < height - 3 {
+            let content_height = height - 5;
             
-            let x = mouse_event.column as usize;
-            let y = mouse_event.row as usize;
-            
-            if y < 4 {
-                return self.header_pane.handle_mouse_event(app, mouse_event);
-            }
-            
-            if y > 1 && y < height - 3 {
-                let content_height = height - 5;
-                
-                if x < width * 15 / 100 {
-                    return self.collections_pane.handle_mouse_event(app, mouse_event);
-                } else if y < 1 + (content_height * 70 / 100) {
-                    return self.workspace_pane.handle_mouse_event(app, mouse_event);
-                } else {
-                    return self.results_pane.handle_mouse_event(app, mouse_event);
-                }
+            if x < width * 15 / 100 {
+                return self.collections_pane.handle_mouse_event(app, mouse_event);
+            } else if y < 1 + (content_height * 70 / 100) {
+                return self.workspace_pane.handle_mouse_event(app, mouse_event);
+            } else {
+                return self.results_pane.handle_mouse_event(app, mouse_event);
             }
         }
         Ok(false)

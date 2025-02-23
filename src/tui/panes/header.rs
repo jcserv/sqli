@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Ok, Result};
 use crossterm::event::{KeyCode, KeyEvent, MouseEvent};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -12,11 +12,15 @@ use ratatui::{
 use crate::tui::{app::{App, AppCommand, Mode}, navigation::{FocusType, Navigable, PaneId}, widgets::button::{Button, BLUE}};
 use super::traits::Instructions;
 
-pub struct HeaderPane;
+pub struct HeaderPane {
+    run_query_button: Button<'static>,
+}
 
 impl HeaderPane {
     pub fn new() -> Self {
-        Self
+        Self {
+            run_query_button: Button::new("Run Query"),
+        }
     }
 
     pub fn render(&mut self, app: &mut App, frame: &mut Frame, area: Rect) {
@@ -73,8 +77,9 @@ impl HeaderPane {
             ])
             .split(area);
     
+        self.run_query_button.set_area(horizontal[1]);
         frame.render_widget(
-            Button::new("Run Query").theme(BLUE),
+            self.run_query_button.clone().theme(BLUE),
             horizontal[1]
         );
     }
@@ -128,29 +133,26 @@ impl Navigable for HeaderPane {
         }
     }
     
-    fn handle_mouse_event(&self, app: &mut App, mouse_event: MouseEvent) -> Result<bool> {
+    fn handle_mouse_event(&mut self, app: &mut App, mouse_event: MouseEvent) -> Result<bool> {
         use crossterm::event::{MouseEventKind, MouseButton};
-    
-        if let MouseEventKind::Down(MouseButton::Left) = mouse_event.kind {
-            if mouse_event.row >= 1 && mouse_event.row <= 3 {
-                let terminal_width = crossterm::terminal::size().unwrap_or((80, 24)).0;
-    
-                let button_width = 15;
-                let button_x_start = terminal_width.saturating_sub(button_width + 1);
-                let button_x_end = terminal_width.saturating_sub(2);
-    
-                if mouse_event.column >= button_x_start && mouse_event.column <= button_x_end {
+        match mouse_event.kind {
+            MouseEventKind::Down(MouseButton::Left) => {
+                if is_mouse_event_on_button(mouse_event) {
                     app.query_state.pending_command = AppCommand::ExecuteQuery;
                     return Ok(false);
                 }
-            }
+
+                if app.navigation.is_active(PaneId::Header) {
+                    return self.activate(app);
+                }
+                app.navigation.activate_pane(PaneId::Header)?;
+                return Ok(false);
+            },
+            _ => {
+                self.run_query_button.handle_mouse_event(mouse_event);
+                return Ok(false);
+             }
         }
-    
-        if app.navigation.is_active(PaneId::Header) {
-            return self.activate(app);
-        }
-        app.navigation.activate_pane(PaneId::Header)?;
-        Ok(false)
     }
     
     fn activate(&self, app: &mut App) -> Result<bool> {
@@ -162,4 +164,14 @@ impl Navigable for HeaderPane {
         app.navigation.stop_editing(PaneId::Header)?;
         Ok(false)
     }
+}
+
+fn is_mouse_event_on_button(mouse_event: MouseEvent) -> bool {
+    let terminal_width = crossterm::terminal::size().unwrap_or((80, 24)).0;
+
+    let button_width = 15;
+    let button_x_start = terminal_width.saturating_sub(button_width + 1);
+    let button_x_end = terminal_width.saturating_sub(2);
+
+    mouse_event.column >= button_x_start && mouse_event.column <= button_x_end
 }

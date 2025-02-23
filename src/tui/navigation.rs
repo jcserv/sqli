@@ -255,7 +255,7 @@ impl NavigationManager {
 
 pub trait Navigable {
     fn handle_key_event(&mut self, app: &mut crate::tui::app::App, key_event: KeyEvent) -> Result<bool>;
-    fn handle_mouse_event(&self, app: &mut crate::tui::app::App, mouse_event: MouseEvent) -> Result<bool>;
+    fn handle_mouse_event(&mut self, app: &mut crate::tui::app::App, mouse_event: MouseEvent) -> Result<bool>;
     fn activate(&self, app: &mut crate::tui::app::App) -> Result<bool>;
     fn deactivate(&self, app: &mut crate::tui::app::App) -> Result<bool>;
 }

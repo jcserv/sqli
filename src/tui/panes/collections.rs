@@ -201,7 +201,7 @@ impl Navigable for CollectionsPane {
         }
     }
     
-    fn handle_mouse_event(&self, app: &mut App, mouse_event: MouseEvent) -> Result<bool> {
+    fn handle_mouse_event(&mut self, app: &mut App, mouse_event: MouseEvent) -> Result<bool> {
         app.navigation.activate_pane(PaneId::Collections)?;
 
         if let Some(area) = self.last_area {
