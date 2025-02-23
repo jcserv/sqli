@@ -253,6 +253,10 @@ impl<'a> App<'a> {
         if let Some(conn_name) = &self.selected_connection {
             match query::get_connection(conn_name) {
                 Ok(Some(conn)) => {
+                    if let Some(pwd) = &self.current_password {
+                        self.execute_query_with_password(Some(pwd.clone()));
+                        return;
+                    }
                     if conn.requires_password() {
                         self.show_password_prompt();
                         return;
@@ -268,7 +272,6 @@ impl<'a> App<'a> {
                 }
             }
         }
-        self.message = "Called execute_query_with_password with None".to_string();
         self.execute_query_with_password(None);
     }
 
