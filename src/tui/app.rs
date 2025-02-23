@@ -486,6 +486,44 @@ impl<'a> App<'a> {
             }
             ModalAction::Custom(action) => {
                 match action.as_str() {
+                    "save" => {
+                        if let Some(modal) = self.modal_manager.get_active_modal_as::<NewFileModal>() {
+                            let (name, file_type, scope) = modal.get_values();
+                            
+                            if name.is_empty() {
+                                self.ui_state.message = "Name cannot be empty".to_string();
+                                return Ok(());
+                            }
+                            if file_type == "file" && !name.ends_with(".sql") {
+                                self.ui_state.message = "File name must end with .sql".to_string();
+                                return Ok(());
+                            }
+                            self.query_state.pending_command = AppCommand::CreateFile;
+                            
+                            self.file_operation_state = Some(FileOperationState::Create {
+                                name,
+                                is_folder: file_type == "folder",
+                                scope,
+                            });
+                        }
+                    }
+                    "edit" => {
+                        if let Some(modal) = self.modal_manager.get_active_modal_as::<EditFileModal>() {
+                            let (name, scope) = modal.get_values();
+                            
+                            if name.is_empty() {
+                                self.ui_state.message = "Name cannot be empty".to_string();
+                                return Ok(());
+                            }
+
+                            self.query_state.pending_command = AppCommand::EditFile;
+                            
+                            self.file_operation_state = Some(FileOperationState::Edit {
+                                name,
+                                scope,
+                            });
+                        }
+                    }
                     "submit" => {
                         if let Some(modal) = self.modal_manager.get_active_modal_as::<PasswordModal>() {
                             self.query_state.current_password = modal.get_password();
@@ -514,7 +552,6 @@ impl<'a> App<'a> {
                         self.ui_state.message = "Name cannot be empty".to_string();
                         return Ok(());
                     }
-
                     self.query_state.pending_command = AppCommand::CreateFile;
                     
                     self.file_operation_state = Some(FileOperationState::Create {
@@ -578,8 +615,6 @@ impl<'a> App<'a> {
             return None;
         }
 
-        // Parse the selected path to determine if it's a file or folder
-        // and get its current scope
         if let Some(file) = parse_selected_file(&selected) {
             match file {
                 SelectedFile::Config(scope) => Some(SelectedFileInfo {
@@ -588,7 +623,6 @@ impl<'a> App<'a> {
                     scope,
                 }),
                 SelectedFile::Sql { collection, filename, scope } => {
-                    // If filename is empty, it's a collection (folder)
                     let is_folder = filename.is_empty();
                     let name = if is_folder { collection } else { filename };
                     Some(SelectedFileInfo {
