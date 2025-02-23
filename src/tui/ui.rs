@@ -130,7 +130,6 @@ impl UI {
                 " ^C ".blue().bold(),
                 "Quit ".white().into(),
             ]),
-            Mode::Search => self.workspace_pane.get_instructions(app),
             _ => Line::from(""),
         };
         

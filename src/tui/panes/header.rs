@@ -86,17 +86,34 @@ impl HeaderPane {
 }
 
 impl Instructions for HeaderPane {
-    fn get_instructions(&self, _app: &App) -> Line<'static> {
-        Line::from(vec![
-            " Tab ".blue().bold(),
-            "Switch Panel ".white().into(),
-            " Space ".blue().bold(),
-            "Select ".white().into(),
-            " ^P ".blue().bold(),
-            "Command ".white().into(),
-            " ^C ".blue().bold(),
-            "Quit ".white().into(),
-        ])
+    fn get_instructions(&self, app: &App) -> Line<'static> {
+        if app.mode != Mode::Normal {
+            return Line::from("");
+        }
+        
+        if !app.is_header_active() {
+            return Line::from("");
+        }
+        
+        if app.is_pane_in_edit_mode(PaneId::Header) {
+            Line::from(vec![
+                " Esc ".blue().bold(),
+                "Return ".white().into(),
+                " ←/→ ".blue().bold(),
+                " Change Connection ".white().into(),
+                " ^C ".blue().bold(),
+                "Quit ".white().into(),
+            ])
+        } else {
+            Line::from(vec![
+                " Tab ".blue().bold(),
+                "Switch Panel ".white().into(),
+                " Space ".blue().bold(),
+                "Select ".white().into(),
+                " ^C ".blue().bold(),
+                "Quit ".white().into(),
+            ])
+        }
     }
 }
 

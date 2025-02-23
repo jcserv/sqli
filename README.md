@@ -6,10 +6,10 @@ inspired by tools like [curl](https://github.com/curl/curl), [posting](https://g
 
 ## features 🚀
 
-- 🧪 simple syntax for ad-hoc queries 
+- 🧪 simple syntax for ad-hoc queries from the terminal
 - 📁 collections are stored in your local file system
   - repo-level collections are stored in `./sqli` - add these to your source control to share with others!
-  - user-level settings & collections are stored in `<CONFIG_DIR>/sqli/collections`
+  - user-level settings & collections are stored in `<CONFIG_DIR>/sqli`
 - 🦀 written in rust btw 😎  
 
 ## installation 📦
@@ -32,12 +32,8 @@ or
 
 1. ad-hoc queries: `sqli query --url postgres://user:password@host:port/database --sql "SELECT * FROM table;"`
 2. configure a connection: `sqli config set --name local --url postgres://user:password@host:port/database`
-
-<!-- 
-1. `sqli config set --name local --url postgres://user:password@host:port/database` - add a new connection
-2. `sqli query --connection local --sql "SELECT * FROM book;"` - use a pre-configured connection
-3. `sqli query --connection local --file path/to/file.sql` - execute a sql query from a file 
--->
+3. query using a pre-configured connection: `sqli query --conn local --sql "SELECT * FROM table;"`
+4. query using a file: `sqli query --conn local --sql path/to/file.sql`
 
 ## references 📚
 

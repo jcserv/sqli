@@ -5,10 +5,4 @@ connections:
     port: 5432
     database: go-api-template
     user: root
-    password: password # if password is not set, it will be prompted
-
-
-    # options
-    # server-ca
-    # client-cert
-    # client-key
+    password: password

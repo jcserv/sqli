@@ -21,7 +21,6 @@ use super::widgets::searchable_textarea::SearchableTextArea;
 pub enum Mode {
     Normal,
     Command,
-    Search,
     Password,
 }
 
@@ -144,6 +143,10 @@ impl<'a> App<'a> {
             navigation,
             modal_manager: ModalManager::new(),
         }
+    }
+
+    pub fn is_header_active(&self) -> bool {
+        self.navigation.is_active(PaneId::Header)
     }
 
     pub fn is_collections_active(&self) -> bool {

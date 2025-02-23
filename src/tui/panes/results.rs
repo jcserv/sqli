@@ -147,8 +147,6 @@ impl Instructions for ResultsPane {
                 "Stop Editing ".white().into(),
                 " ↑/↓ ".blue().bold(),
                 "Navigate ".white().into(),
-                " ^P ".blue().bold(),
-                "Command ".white().into(),
                 " ^C ".blue().bold(),
                 "Quit ".white().into(),
             ])
@@ -158,8 +156,6 @@ impl Instructions for ResultsPane {
                 "Switch Panel ".white().into(),
                 " Space ".blue().bold(),
                 "Select ".white().into(),
-                " ^P ".blue().bold(),
-                "Command ".white().into(),
                 " ^C ".blue().bold(),
                 "Quit ".white().into(),
             ])

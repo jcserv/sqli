@@ -87,12 +87,6 @@ impl Instructions for WorkspacePane {
                         "Save ".white().into(),
                         " ^Space ".blue().bold(),
                         "Run ".white().into(),
-                        // " ^F ".blue().bold(),
-                        // "Find ".white().into(),
-                        // " ^R ".blue().bold(),
-                        // "Replace ".white().into(),
-                        // " ^P ".blue().bold(),
-                        // "Command ".white().into(),
                         " ^C ".blue().bold(),
                         "Quit ".white().into(),
                     ])
@@ -102,39 +96,6 @@ impl Instructions for WorkspacePane {
                         "Switch Panel ".white().into(),
                         " Space ".blue().bold(),
                         "Select ".white().into(),
-                        // " ^F ".blue().bold(),
-                        // "Find ".white().into(),
-                        // " ^P ".blue().bold(),
-                        // "Command ".white().into(),
-                        " ^C ".blue().bold(),
-                        "Quit ".white().into(),
-                    ])
-                }
-            },
-            Mode::Search => {
-                if app.ui_state.search.replace_mode {
-                    Line::from(vec![
-                        " ESC ".blue().bold(),
-                        "Cancel ".white().into(),
-                        " Enter ".blue().bold(),
-                        "Replace ".white().into(),
-                        // " ^N ".blue().bold(),
-                        // "Next ".white().into(),
-                        // " ^P ".blue().bold(),
-                        // "Previous ".white().into(),
-                        " ^C ".blue().bold(),
-                        "Quit ".white().into(),
-                    ])
-                } else {
-                    Line::from(vec![
-                        " ESC ".blue().bold(),
-                        "Cancel ".white().into(),
-                        " Enter ".blue().bold(),
-                        "Find ".white().into(),
-                        // " ^N ".blue().bold(),
-                        // "Next ".white().into(),
-                        // " ^P ".blue().bold(),
-                        // "Previous ".white().into(),
                         " ^C ".blue().bold(),
                         "Quit ".white().into(),
                     ])
@@ -161,14 +122,6 @@ impl Navigable for WorkspacePane {
                             app.save_query();
                             Ok(false)
                         }
-                        KeyCode::Char('f') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
-                            app.mode = Mode::Search;
-                            app.ui_state.search.open = true;
-                            app.ui_state.search.replace_mode = false;
-                            app.ui_state.search.textarea.move_cursor(tui_textarea::CursorMove::End);
-                            app.ui_state.search.textarea.delete_line_by_head();
-                            Ok(false)
-                        }
                         // TODO: I would like this to be a Ctrl+Enter shortcut, but it doesn't work
                         // see: https://github.com/crossterm-rs/crossterm/issues/685
                         KeyCode::Char(' ') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
@@ -187,14 +140,6 @@ impl Navigable for WorkspacePane {
                         KeyCode::Char(' ') | KeyCode::Enter => {
                             self.activate(app)
                         }
-                        KeyCode::Char('f') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
-                            app.mode = Mode::Search;
-                            app.ui_state.search.open = true;
-                            app.ui_state.search.replace_mode = false;
-                            app.ui_state.search.textarea.move_cursor(tui_textarea::CursorMove::End);
-                            app.ui_state.search.textarea.delete_line_by_head();
-                            Ok(false)
-                        }
                         KeyCode::Up => {
                             app.navigation.activate_pane(PaneId::Header)?;
                             Ok(false)
@@ -207,81 +152,7 @@ impl Navigable for WorkspacePane {
                             app.navigation.activate_pane(PaneId::Results)?;
                             Ok(false)
                         }
-                        // KeyCode::Char('r') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
-                        //     app.mode = Mode::Search;
-                        //     app.ui_state.search.open = true;
-                        //     app.ui_state.search.replace_mode = true;
-                        //     app.ui_state.search.textarea.move_cursor(tui_textarea::CursorMove::End);
-                        //     app.ui_state.search.textarea.delete_line_by_head();
-                        //     Ok(false)
-                        // }
                         _ => Ok(false)
-                    }
-                }
-            },
-            Mode::Search => {
-                // Handle search mode inputs
-                let input = tui_textarea::Input::from(key_event);
-                match input {
-                    tui_textarea::Input { key: tui_textarea::Key::Esc, .. } => {
-                        app.ui_state.search.open = false;
-                        app.mode = Mode::Normal;
-                        app.ui_state.workspace.set_search_pattern("")?;
-                        Ok(false)
-                    }
-                    tui_textarea::Input { key: tui_textarea::Key::Enter, .. } => {
-                        if app.ui_state.search.replace_mode {
-                            let pattern = app.ui_state.search.textarea.lines()[0].as_str();
-                            let replacement = app.ui_state.search.textarea.lines().get(1)
-                                                 .map(|s| s.as_str()).unwrap_or("");
-                            app.ui_state.workspace.set_search_pattern(pattern)?;
-                            if key_event.modifiers.contains(KeyModifiers::CONTROL) {
-                                let count = app.ui_state.workspace.replace_all(replacement);
-                                app.ui_state.message = format!("Replaced {} occurrences", count);
-                            } else {
-                                if app.ui_state.workspace.replace_next(replacement) {
-                                    app.ui_state.message = "Replaced occurrence".to_string();
-                                } else {
-                                    app.ui_state.message = "No more matches".to_string();
-                                }
-                            }
-                        } else {
-                            let pattern = app.ui_state.search.textarea.lines()[0].as_str();
-                            app.ui_state.workspace.set_search_pattern(pattern)?;
-                            if !app.ui_state.workspace.search_forward(true) {
-                                app.ui_state.message = "Pattern not found".to_string();
-                            }
-                        }
-                        app.ui_state.search.open = false;
-                        app.mode = Mode::Normal;
-                        Ok(false)
-                    }
-                    tui_textarea::Input { 
-                        key: tui_textarea::Key::Char('n'),
-                        ctrl: true,
-                        ..
-                    } => {
-                        if !app.ui_state.workspace.search_forward(false) {
-                            app.ui_state.message = "Pattern not found".to_string();
-                        }
-                        Ok(false)
-                    }
-                    tui_textarea::Input {
-                        key: tui_textarea::Key::Char('p'),
-                        ctrl: true,
-                        ..
-                    } => {
-                        if !app.ui_state.workspace.search_back(false) {
-                            app.ui_state.message = "Pattern not found".to_string();
-                        }
-                        Ok(false)
-                    }
-                    _ => {
-                        app.ui_state.search.textarea.input(input);
-                        if let Some(pattern) = app.ui_state.search.textarea.lines().first() {
-                            app.ui_state.workspace.set_search_pattern(pattern)?;
-                        }
-                        Ok(false)
                     }
                 }
             },

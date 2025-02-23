@@ -124,8 +124,6 @@ impl Instructions for CollectionsPane {
                 "Navigate ".white().into(),
                 " Space ".blue().bold(),
                 "Confirm ".white().into(),
-                " ^P ".blue().bold(),
-                "Command ".white().into(),
                 " ^C ".blue().bold(),
                 "Quit ".white().into(),
             ])
@@ -135,8 +133,6 @@ impl Instructions for CollectionsPane {
                 "Switch Panel ".white().into(),
                 " Space ".blue().bold(),
                 "Select ".white().into(),
-                " ^P ".blue().bold(),
-                "Command ".white().into(),
                 " ^C ".blue().bold(),
                 "Quit ".white().into(),
             ])

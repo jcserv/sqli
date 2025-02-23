@@ -1,33 +1,38 @@
 # todo
 
 ## tui
-- [ ] buttons: highlight on hover
-- [ ] pane navigation: tab between elements in pane
 - [ ] collections
   - [ ] display user/local
-- [ ] creating a sql file, saving to collection
-- [ ] results pane
-  - [ ] pagination
-- [ ] refactor: modal manager
-- [ ] refactor: on-click in bounds logic in modal widget
+  - [ ] saving a new file
+- [ ] connections
+  - [ ] selection (left/right arrows?)
+  - [ ] configure new --> just load in and allow them to edit in workspace
+- [ ] tests
+  - [ ] integration tests for cli
+  - [ ] snapshot tests for tui via insta snapshots
+  - [ ] vscode launch configurations
+- [ ] buttons: highlight on hover
+- [ ] pane navigation: tab between elements in pane
 
 ## cli
-- [ ] collections
+- [ ] configuring user-level collections
 - [ ] query: when using a sql file with parameters, prompt for values
 - [ ] server_ca/client_cert/client_key
+- [ ] query: --format flag for output (csv, json, table)
 
 ## nice to have
-- [ ] view database schema
-- [ ] query: when using a sql file with parameters, prompt for values
-- [ ] connections select drop down 
+
+features:
+- [ ] results pane: pagination
+- [ ] view database schema in tui
 - [ ] autocomplete based on tables within a database
 - [ ] syntax highlighting
 - [ ] sql formatting
 - [ ] find/replace
+- [ ] query history
 - [ ] keybind/theme configuration
 
+ui/ux improvements:
 - [ ] copy button/keybind
 - [ ] allow configs to be referenced by name case insensitively
-- [ ] display user-provided name for sql file
-- [ ] query history
 - [ ] click to move cursor in workspace
