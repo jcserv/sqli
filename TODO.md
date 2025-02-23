@@ -1,12 +1,8 @@
 # todo
 
 ## tui
-- [ ] collections
-  - [ ] display user/local
-  - [ ] saving a new file
-- [ ] connections
-  - [X] selection (left/right arrows?)
-  - [ ] configure new --> just load in and allow them to edit in workspace
+- [ ] new/rename/delete sql file
+- [ ] new/rename/delete collection (user/local) 
 - [ ] tests
   - [ ] integration tests for cli
   - [ ] snapshot tests for tui via insta snapshots
@@ -33,6 +29,7 @@ features:
 - [ ] keybind/theme configuration
 
 ui/ux improvements:
+- [ ] scroll handlers
 - [ ] copy button/keybind
 - [ ] allow configs to be referenced by name case insensitively
 - [ ] click to move cursor in workspace

@@ -145,6 +145,22 @@ pub fn read_scoped_file(scope: CollectionScope, relative_path: impl AsRef<Path>)
     }
 }
 
+pub fn save_file(selected_file: &SelectedFile, content: &str) -> Result<()> {
+    match selected_file {
+        SelectedFile::Config(scope) => {
+            let config_path = get_scoped_path(*scope, "config.yaml")?;
+            write_file(config_path, content)?;
+            Ok(())
+        },
+        SelectedFile::Sql { collection, filename, scope } => {
+            let relative_path = PathBuf::from(collection).join(filename);
+            let full_path = get_scoped_path(*scope, relative_path)?;
+            write_file(full_path, content)?;
+            Ok(())
+        }
+    }
+}
+
 pub fn parse_selected_file(selected: &[String]) -> Option<SelectedFile> {
     let file_item = selected.last()?;
     

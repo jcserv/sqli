@@ -8,6 +8,7 @@ use tui_textarea::TextArea;
 use tui_tree_widget::{TreeItem, TreeState};
 
 use crate::config::ConfigManager;
+use crate::file::{self, parse_selected_file};
 use crate::query::{self, execute_query};
 use crate::sql::interface::QueryResult;
 
@@ -286,8 +287,32 @@ impl<'a> App<'a> {
 
     pub fn save_query(&mut self) {
         let content = self.ui_state.workspace.get_content();
-        if !content.is_empty() {
-            // TODO: Implement save functionality
+        if content.is_empty() {
+            self.ui_state.message = "Nothing to save".to_string();
+            return;
+        }
+
+        let selected = self.ui_state.collection_state.selected();
+        if selected.is_empty() {
+            self.ui_state.message = "No file selected".to_string();
+            return;
+        }
+
+        let selected_file = match parse_selected_file(&selected) {
+            Some(file) => file,
+            None => {
+                self.ui_state.message = "Invalid selection".to_string();
+                return;
+            }
+        };
+
+        match file::save_file(&selected_file, &content) {
+            Ok(_) => {
+                self.ui_state.message = "File saved successfully".to_string();
+            },
+            Err(e) => {
+                self.ui_state.message = format!("Error saving file: {}", e);
+            }
         }
     }
 }
