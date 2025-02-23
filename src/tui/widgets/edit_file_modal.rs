@@ -25,6 +25,7 @@ struct EditFileContent<'a> {
     focused_element: usize,
 }
 
+/// TODO: Mouse clicks aren't working
 impl EditFileModal {
     pub fn new(name: &str, is_folder: bool, current_scope: CollectionScope) -> Self {
         let mut name_input = tui_textarea::TextArea::default();
