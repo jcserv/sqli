@@ -10,7 +10,7 @@ use crate::sql::interface::QueryResult;
 
 use super::navigation::{NavigationManager, PaneId};
 use super::ui::UI;
-use super::widgets::password_modal::PasswordModal;
+use super::widgets::password_modal::{PasswordAction, PasswordModal};
 use super::widgets::searchable_textarea::SearchableTextArea;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -246,6 +246,20 @@ impl<'a> App<'a> {
     }
 
     pub fn handle_mouse(&mut self, ui: &super::ui::UI, mouse_event: MouseEvent) -> anyhow::Result<bool> {
+        if let Some(modal) = &self.password_modal {
+            if let Some(action) = modal.handle_mouse_event(mouse_event) {
+                match action {
+                    PasswordAction::Cancel => {
+                        self.close_password_prompt();
+                    }
+                    PasswordAction::Submit => {
+                        self.handle_password_submit();
+                    }
+                }
+                return Ok(false);
+            }
+        }
+        
         ui.handle_mouse_event(self, mouse_event)
     }
 
