@@ -16,7 +16,6 @@ use super::{
         header::HeaderPane,
         results::ResultsPane, 
         workspace::WorkspacePane, 
-        traits::Instructions
     },
 };
 

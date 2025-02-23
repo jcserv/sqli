@@ -1,12 +1,23 @@
 use anyhow::Result;
-use crossterm::event::{KeyCode, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
+use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
-    layout::{Constraint, Rect}, prelude::*, style::{Color, Modifier, Style}, text::Line, widgets::{Block, Borders, Cell, Paragraph, Row, Scrollbar, ScrollbarOrientation, ScrollbarState, Table, TableState}, Frame 
+    prelude::*,
+    layout::{Alignment, Constraint, Rect},
+    style::{Color, Modifier, Style},
+    text::Line,
+    widgets::{Cell, Paragraph, Row, Scrollbar, ScrollbarOrientation, ScrollbarState, Table, TableState},
+    Frame,
 };
 
-use crate::{sql::interface::QueryResult, tui::app::{App, Mode}};
-use crate::tui::navigation::{Navigable, PaneId, FocusType};
-use super::traits::Instructions;
+use crate::{
+    sql::interface::QueryResult,
+    tui::{
+        app::App,
+        navigation::PaneId,
+    },
+};
+
+use super::pane::{Pane, PaneExt};
 
 pub struct ResultsPane {
     table_state: TableState,
@@ -19,93 +30,7 @@ impl ResultsPane {
         }
     }
 
-    pub fn render(&mut self, app: &mut App, frame: &mut Frame, area: Rect) {
-        let focus_type = if let Some(info) = app.navigation.get_pane_info(PaneId::Results) {
-            info.focus_type
-        } else {
-            FocusType::Inactive
-        };
-    
-        let focus_style = match focus_type {
-            FocusType::Editing => Style::default().fg(Color::LightBlue).bold(),
-            FocusType::Active => Style::default().fg(Color::LightBlue),
-            FocusType::Inactive => Style::default().fg(Color::White),
-        };
-
-        let execution_time_ms = app.query_state.query_result.execution_time.as_millis();    
-        let status_text = format!(
-            " Query time: {}ms | {} rows ", 
-            execution_time_ms,
-            app.query_state.query_result.row_count, 
-        );
-        let status_line = Line::from(status_text);
-    
-        let block = Block::default()
-            .title_top("Results")
-            .title_alignment(Alignment::Left)
-            .title_style(focus_style)
-            .title_bottom(status_line)
-            // .title_alignment(Alignment::Right)
-            .borders(Borders::ALL)
-            .border_style(focus_style);
-    
-        let inner_area = block.inner(area);
-        frame.render_widget(block, area);
-        
-        let header_cells = app.query_state.query_result.columns.iter()
-            .map(|h| Cell::from(h.as_str()).style(Style::default().bold()));
-        let header = Row::new(header_cells)
-            .style(Style::default().bg(Color::DarkGray))
-            .height(1);
-    
-        let constraints = calculate_column_constraints(&app.query_state.query_result);
-        
-        let row_count = app.query_state.query_result.rows.len();
-
-        if row_count == 0 || app.query_state.query_result.columns.is_empty() {
-            let empty_message = Paragraph::new("No query results to display. Run a query using the button above.")
-                .alignment(Alignment::Center)
-                .style(Style::default().fg(Color::DarkGray));
-            
-            frame.render_widget(empty_message, inner_area);
-            return;
-        }
-            
-        let rows = app.query_state.query_result.rows.iter().map(|item| {
-            let cells = item.iter().map(|c| Cell::from(c.as_str()));
-            Row::new(cells).height(1)
-        });
-        
-        let table = Table::new(
-            rows,
-            constraints,
-        )
-        .header(header)
-        .row_highlight_style(
-            Style::default()
-            .bg(Color::LightBlue)
-            .fg(Color::Black)
-            .add_modifier(Modifier::BOLD)
-        )
-        .highlight_symbol(">> ");
-    
-        frame.render_stateful_widget(table, inner_area, &mut self.table_state);
-    
-        let scrollbar = Scrollbar::default()
-            .orientation(ScrollbarOrientation::VerticalRight)
-            .begin_symbol(None)
-            .end_symbol(None);
-    
-        frame.render_stateful_widget(
-            scrollbar,
-            inner_area,
-            &mut ScrollbarState::new(
-                row_count
-            ).position(self.table_state.selected().unwrap_or(0)),
-        );
-    }
-
-    pub fn next_row(&mut self, max_idx: usize) {
+    fn next_row(&mut self, max_idx: usize) {
         let i = match self.table_state.selected() {
             Some(i) => {
                 if i >= max_idx {
@@ -119,7 +44,7 @@ impl ResultsPane {
         self.table_state.select(Some(i));
     }
 
-    pub fn previous_row(&mut self, max_idx: usize) {
+    fn previous_row(&mut self, max_idx: usize) {
         let i = match self.table_state.selected() {
             Some(i) => {
                 if i == 0 {
@@ -134,13 +59,74 @@ impl ResultsPane {
     }
 }
 
-impl Instructions for ResultsPane {
-    fn get_instructions(&self, app: &App) -> Line<'static> {
-        if app.mode != Mode::Normal || !app.navigation.is_active(PaneId::Results) {
-            return Line::from("");
-        }
+impl Pane for ResultsPane {
+    fn pane_id(&self) -> PaneId {
+        PaneId::Results
+    }
+
+    fn title(&self) -> &'static str {
+        "Results"
+    }
+
+    fn render_content(&mut self, app: &mut App, frame: &mut Frame, area: Rect) {
+        let execution_time_ms = app.query_state.query_result.execution_time.as_millis();    
+        let status_text = format!(
+            " Query time: {}ms | {} rows ", 
+            execution_time_ms,
+            app.query_state.query_result.row_count, 
+        );
+        let status_line = Line::from(status_text);
         
-        let is_editing = app.is_pane_in_edit_mode(PaneId::Results);
+        frame.render_widget(Paragraph::new(status_line), area);
+
+        let header_cells = app.query_state.query_result.columns.iter()
+            .map(|h| Cell::from(h.as_str()).style(Style::default().bold()));
+        let header = Row::new(header_cells)
+            .style(Style::default().bg(Color::DarkGray))
+            .height(1);
+    
+        let constraints = calculate_column_constraints(&app.query_state.query_result);
+        let row_count = app.query_state.query_result.rows.len();
+
+        if row_count == 0 || app.query_state.query_result.columns.is_empty() {
+            let empty_message = Paragraph::new("No query results to display. Run a query using the button above.")
+                .alignment(Alignment::Center)
+                .style(Style::default().fg(Color::DarkGray));
+            
+            frame.render_widget(empty_message, area);
+            return;
+        }
+            
+        let rows = app.query_state.query_result.rows.iter().map(|item| {
+            let cells = item.iter().map(|c| Cell::from(c.as_str()));
+            Row::new(cells).height(1)
+        });
+        
+        let table = Table::new(rows, constraints)
+            .header(header)
+            .row_highlight_style(
+                Style::default()
+                    .bg(Color::LightBlue)
+                    .fg(Color::Black)
+                    .add_modifier(Modifier::BOLD)
+            )
+            .highlight_symbol(">> ");
+    
+        frame.render_stateful_widget(table, area, &mut self.table_state);
+    
+        let scrollbar = Scrollbar::default()
+            .orientation(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(None)
+            .end_symbol(None);
+    
+        frame.render_stateful_widget(
+            scrollbar,
+            area,
+            &mut ScrollbarState::new(row_count).position(self.table_state.selected().unwrap_or(0)),
+        );
+    }
+
+    fn get_custom_instructions(&self, _app: &App, is_editing: bool) -> Line<'static> {
         if is_editing {
             Line::from(vec![
                 " Esc ".blue().bold(),
@@ -161,73 +147,39 @@ impl Instructions for ResultsPane {
             ])
         }
     }
-}
 
-impl Navigable for ResultsPane {
-    fn handle_key_event(&mut self, app: &mut App, key_event: KeyEvent) -> Result<bool> {
-        if app.mode != Mode::Normal || !app.navigation.is_active(PaneId::Results) {
-            return Ok(false);
-        }
-
-        let info = app.navigation.get_pane_info(PaneId::Results).unwrap();
-        match info.focus_type {
-            FocusType::Active => {
-                match key_event.code {
-                    KeyCode::Enter | KeyCode::Char(' ') => {
-                        self.activate(app)
-                    },
-                    KeyCode::Up => {
-                        app.navigation.activate_pane(PaneId::Workspace)?;
-                        Ok(false)
-                    },
-                    KeyCode::Left => {
-                        app.navigation.activate_pane(PaneId::Collections)?;
-                        Ok(false)
-                    },
-                    _ => Ok(false)
-                }
+    fn handle_edit_mode_key(&mut self, app: &mut App, key: KeyEvent) -> Result<bool> {
+        match key.code {
+            KeyCode::Esc => {
+                self.deactivate(app)
             },
-            FocusType::Editing => {
-                match key_event.code {
-                    KeyCode::Esc  => {
-                        self.deactivate(app)
-                    },
-                    KeyCode::Up => {
-                        self.previous_row(app.query_state.query_result.rows.len().saturating_sub(1));
-                        Ok(false)
-                    },
-                    KeyCode::Down => {
-                        self.next_row(app.query_state.query_result.rows.len().saturating_sub(1));
-                        Ok(false)
-                    },
-                    _ => Ok(false)
-                }
+            KeyCode::Up => {
+                self.previous_row(app.query_state.query_result.rows.len().saturating_sub(1));
+                Ok(false)
+            },
+            KeyCode::Down => {
+                self.next_row(app.query_state.query_result.rows.len().saturating_sub(1));
+                Ok(false)
             },
             _ => Ok(false)
         }
     }
-    
-    fn handle_mouse_event(&mut self, app: &mut App, mouse_event: MouseEvent) -> Result<bool> {
-        match mouse_event.kind {
-            MouseEventKind::Down(MouseButton::Left) => {
-                if app.navigation.is_active(PaneId::Results) {
-                    return self.activate(app)
-                }
-                app.navigation.activate_pane(PaneId::Results)?;
+
+    fn handle_active_mode_key(&mut self, app: &mut App, key: KeyEvent) -> Result<bool> {
+        match key.code {
+            KeyCode::Enter | KeyCode::Char(' ') => {
+                self.activate(app)
+            },
+            KeyCode::Up => {
+                app.navigation.activate_pane(PaneId::Workspace)?;
                 Ok(false)
             },
-            _ => { Ok(false) }
+            KeyCode::Left => {
+                app.navigation.activate_pane(PaneId::Collections)?;
+                Ok(false)
+            },
+            _ => Ok(false)
         }
-    }
-    
-    fn activate(&self, app: &mut App) -> Result<bool> {
-        app.navigation.start_editing(PaneId::Results)?;
-        Ok(false)
-    }
-    
-    fn deactivate(&self, app: &mut App) -> Result<bool> {
-        app.navigation.stop_editing(PaneId::Results)?;
-        Ok(false)
     }
 }
 
