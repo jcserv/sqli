@@ -17,8 +17,9 @@ use crate::sql::interface::QueryResult;
 use super::modal::{ModalEvent, ModalManager, ModalType};
 use super::navigation::{NavigationManager, PaneId};
 use super::ui::UI;
-use super::widgets::file_modal::{EditFileModal, NewFileModal};
+use super::widgets::edit_file_modal::EditFileModal;
 use super::widgets::modal::ModalAction;
+use super::widgets::new_file_modal::NewFileModal;
 use super::widgets::password_modal::PasswordModal;
 use super::widgets::searchable_textarea::SearchableTextArea;
 

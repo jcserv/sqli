@@ -5,7 +5,7 @@ use std::any::Any;
 
 use crate::collection::CollectionScope;
 
-use super::widgets::{file_modal::{EditFileModal, NewFileModal}, modal::{ModalAction, ModalHandler}, password_modal::PasswordModal};
+use super::widgets::{edit_file_modal::EditFileModal, modal::{ModalAction, ModalHandler}, new_file_modal::NewFileModal, password_modal::PasswordModal};
 
 pub enum ModalType {
     Password,
