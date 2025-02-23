@@ -1,9 +1,7 @@
 use ratatui::{
-    prelude::*,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
-    text::Line,
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders},
     Frame,
 };
 use tui_textarea::TextArea;
@@ -38,7 +36,7 @@ impl<'a> PasswordModal<'a> {
             area,
         );
         
-        let modal_area = centered_rect(40, 12, area);
+        let modal_area = centered_rect(40, 35, area);
         
         let modal_block = Block::default()
             .title("Enter Password")
@@ -55,22 +53,11 @@ impl<'a> PasswordModal<'a> {
             .margin(1)
             .constraints([
                 Constraint::Length(3), // Password input
-                Constraint::Length(1), // Error message
-                Constraint::Length(1), // Gap
                 Constraint::Length(3), // Buttons
             ])
             .split(inner_area);
             
         frame.render_widget(&self.textarea, chunks[0]);
-        
-        if let Some(error) = &self.error {
-            let err_msg = format!("Error: {}", error);
-            frame.render_widget(
-                Paragraph::new(Line::from(vec![err_msg.red().bold()]))
-                    .alignment(Alignment::Center),
-                chunks[1],
-            );
-        }
         
         let button_layout = Layout::default()
             .direction(Direction::Horizontal)
@@ -81,7 +68,7 @@ impl<'a> PasswordModal<'a> {
                 Constraint::Length(10),
                 Constraint::Percentage(35),
             ])
-            .split(chunks[3]);
+            .split(chunks[1]);
             
         frame.render_widget(
             Block::default()

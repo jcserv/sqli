@@ -140,7 +140,6 @@ impl<'a> App<'a> {
                             AppCommand::ExecuteQuery => {
                                 let sql = self.workspace.get_content();
                                 let connection = self.selected_connection.clone();
-                                
                                 match tokio::task::block_in_place(|| {
                                     futures::executor::block_on(async {
                                         crate::query::execute_query(
@@ -267,14 +266,14 @@ impl<'a> App<'a> {
                 }
             }
         }
-
+        self.message = "Called execute_query_with_password with None".to_string();
         self.execute_query_with_password(None);
     }
 
     fn execute_query_with_password(&mut self, password: Option<String>) {
         let sql = self.workspace.get_content();
         let connection = self.selected_connection.clone();
-        
+
         let handle = tokio::spawn(async move {
             match execute_query(sql, None, connection, password).await {
                 Ok(_) => AsyncCommandResult::new(AppCommand::ExecuteQuery),
@@ -304,7 +303,6 @@ impl<'a> App<'a> {
         let password = self.password_modal.as_ref()
             .and_then(|modal| modal.textarea.lines().first())
             .map(|line| line.clone());
-            
         self.execute_query_with_password(password);
         self.password_modal = None;
         self.mode = Mode::Normal;

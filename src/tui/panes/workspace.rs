@@ -173,7 +173,6 @@ impl Navigable for WorkspacePane {
                         // see: https://github.com/crossterm-rs/crossterm/issues/685
                         KeyCode::Char(' ') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
                             app.pending_command = AppCommand::ExecuteQuery;
-                            app.message = "Executing query...".to_string();
                             self.deactivate(app)?;
                             Ok(false)
                         }
@@ -186,7 +185,6 @@ impl Navigable for WorkspacePane {
                 } else {
                     match key_event.code {
                         KeyCode::Char(' ') | KeyCode::Enter => {
-                            app.message = "Got here4".to_string();
                             self.activate(app)
                         }
                         KeyCode::Char('f') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
