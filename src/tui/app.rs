@@ -1,5 +1,7 @@
+use anyhow::Result;
 use crossterm::event::{KeyCode, KeyModifiers};
 use crossterm::event::{KeyEvent, MouseEvent};
+use ratatui::layout::Rect;
 use ratatui::widgets::Block;
 use ratatui::widgets::Borders;
 use tui_textarea::TextArea;
@@ -8,9 +10,11 @@ use tui_tree_widget::{TreeItem, TreeState};
 use crate::query::{self, execute_query};
 use crate::sql::interface::QueryResult;
 
+use super::modal::{ModalEvent, ModalManager, ModalType};
 use super::navigation::{NavigationManager, PaneId};
 use super::ui::UI;
-use super::widgets::password_modal::{PasswordAction, PasswordModal};
+use super::widgets::modal::ModalAction;
+use super::widgets::password_modal::PasswordModal;
 use super::widgets::searchable_textarea::SearchableTextArea;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -73,24 +77,24 @@ impl AsyncCommandResult {
 }
 
 pub struct App<'a> {
-    pub command_input: String,
     pub mode: Mode,
     pub message: String,
+    pub navigation: NavigationManager,
+    pub modal_manager: ModalManager,
 
     pub pending_command: AppCommand,
     pub pending_async_operation: Option<tokio::task::JoinHandle<AsyncCommandResult>>,
 
+    pub command_input: String,
     pub selected_connection: Option<String>,
-
-    pub navigation: NavigationManager,
 
     pub collection_state: TreeState<String>,
     pub collection_items: Vec<TreeItem<'a, String>>,
     pub workspace: SearchableTextArea<'a>,
     pub search: SearchBox<'a>,
-    pub query_result: QueryResult,
-    pub password_modal: Option<PasswordModal<'a>>,
+    
     pub current_password: Option<String>,
+    pub query_result: QueryResult,
 
     pub should_quit: bool,
 }
@@ -118,12 +122,12 @@ impl<'a> App<'a> {
             pending_async_operation: None,
             selected_connection: connection,
             navigation,
+            modal_manager: ModalManager::new(),
             collection_state: TreeState::default(),
             collection_items,
             workspace,
             search: SearchBox::default(),
             query_result: QueryResult::default(), 
-            password_modal: None,
             current_password: None,
             should_quit: false,
         }
@@ -203,64 +207,88 @@ impl<'a> App<'a> {
         }
     }
 
-    pub fn handle_key(&mut self, ui: &mut UI, key_event: KeyEvent) -> anyhow::Result<bool> {
+    pub fn handle_key(&mut self, ui: &mut UI, key_event: KeyEvent) -> Result<bool> {
         match (key_event.code, key_event.modifiers) {
             (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
                 self.should_quit = true;
                 return Ok(true);
             }
-            (KeyCode::Tab, _) if !self.is_edit_mode() => {
+            (KeyCode::Tab, _) if !self.is_edit_mode() && !self.modal_manager.is_modal_active() => {
                 _ = self.navigation.cycle_pane(false);
                 return Ok(false);
             }
-            (KeyCode::Char('p'), KeyModifiers::CONTROL) => {
+            (KeyCode::Char('p'), KeyModifiers::CONTROL) if !self.modal_manager.is_modal_active() => {
                 self.mode = Mode::Command;
                 return Ok(false);
             }
             _ => {
-                match self.mode {
-                    Mode::Password => {
-                        match key_event.code {
-                            KeyCode::Enter => {
-                                self.handle_password_submit();
-                                Ok(false)
-                            }
-                            KeyCode::Esc => {
-                                self.close_password_prompt();
-                                Ok(false)
-                            }
-                            _ => {
-                                if let Some(modal) = &mut self.password_modal {
-                                    modal.textarea.input(tui_textarea::Input::from(key_event));
+                if self.modal_manager.is_modal_active() {
+                    match self.modal_manager.handle_event(ModalEvent::Key(key_event))? {
+                        ModalAction::Close => {
+                            self.close_modal();
+                        }
+                        ModalAction::Custom(action) => {
+                            match action.as_str() {
+                                "submit" => {
+                                    if let Some(modal) = self.modal_manager.get_active_modal_as::<PasswordModal>() {
+                                        self.current_password = modal.get_password();
+                                        self.execute_query_with_password(self.current_password.clone());
+                                    }
+                                    self.close_modal();
                                 }
-                                Ok(false)
+                                "cancel" => {
+                                    self.close_modal();
+                                }
+                                _ => {}
                             }
                         }
+                        ModalAction::None => {}
                     }
-                    _ => {
-                        return ui.handle_key_event(self, key_event);
-                    }
+                    return Ok(false);
                 }
+                
+                return ui.handle_key_event(self, key_event);
             }
         }
     }
 
     pub fn handle_mouse(&mut self, ui: &super::ui::UI, mouse_event: MouseEvent) -> anyhow::Result<bool> {
-        if let Some(modal) = &self.password_modal {
-            if let Some(action) = modal.handle_mouse_event(mouse_event) {
-                match action {
-                    PasswordAction::Cancel => {
-                        self.close_password_prompt();
-                    }
-                    PasswordAction::Submit => {
-                        self.handle_password_submit();
-                    }
+        if self.modal_manager.is_modal_active() {
+            let terminal_area = crossterm::terminal::size()
+                .map(|(w, h)| Rect::new(0, 0, w, h))
+                .unwrap_or(Rect::new(0, 0, 80, 24));
+
+            match self.modal_manager.handle_event(ModalEvent::Mouse(mouse_event, terminal_area))? {
+                ModalAction::Close => {
+                    self.close_modal();
+                    return Ok(false);
                 }
-                return Ok(false);
+                ModalAction::Custom(action) => {
+                    match action.as_str() {
+                        "submit" => {
+                            if let Some(modal) = self.modal_manager.get_active_modal_as::<PasswordModal>() {
+                                self.current_password = modal.get_password();
+                                self.execute_query_with_password(self.current_password.clone());
+                            }
+                            self.close_modal();
+                        }
+                        "cancel" => {
+                            self.close_modal();
+                        }
+                        _ => {}
+                    }
+                    return Ok(false);
+                }
+                ModalAction::None => return Ok(false),
             }
         }
-        
+
         ui.handle_mouse_event(self, mouse_event)
+    }
+
+    fn close_modal(&mut self) {
+        self.modal_manager.close_modal();
+        self.mode = Mode::Normal;
     }
 
     pub fn check_and_execute_query(&mut self) {
@@ -314,23 +342,8 @@ impl<'a> App<'a> {
     }
 
     pub fn show_password_prompt(&mut self) {
-        self.password_modal = Some(PasswordModal::default());
+        self.modal_manager.show_modal(ModalType::Password);
         self.mode = Mode::Password;
-    }
-
-    pub fn handle_password_submit(&mut self) {
-        let password = self.password_modal.as_ref()
-            .and_then(|modal| modal.textarea.lines().first())
-            .map(|line| line.clone());
-        self.current_password = password.clone();
-        self.execute_query_with_password(password);
-        self.password_modal = None;
-        self.mode = Mode::Normal;
-    }
-
-    pub fn close_password_prompt(&mut self) {
-        self.password_modal = None;
-        self.mode = Mode::Normal;
     }
 
     pub fn is_collections_active(&self) -> bool {

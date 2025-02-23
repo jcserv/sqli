@@ -1,4 +1,3 @@
-// in src/tui/navigation.rs
 use std::collections::HashMap;
 use anyhow::Result;
 use crossterm::event::{KeyEvent, MouseEvent};

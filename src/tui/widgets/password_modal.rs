@@ -1,18 +1,17 @@
-use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect}, style::{Color, Style}, widgets::{Block, Borders}, Frame
-};
-use crossterm::event::{MouseEvent, MouseEventKind, MouseButton};
+use anyhow::Result;
+use crossterm::event::{KeyEvent, MouseEvent};
+use ratatui::{layout::Rect, style::{Color, Style}, widgets::{Block, Borders}, Frame};
+use std::any::Any;
 use tui_textarea::TextArea;
 
-use super::{button::{GREEN, RED}, modal::{DialogButton, DialogContent, ModalDialog}};
+use crate::tui::widgets::button::{RED, GREEN};
+use super::modal::{DialogButton, DialogContent, ModalAction, ModalDialog, ModalHandler};
 
-pub struct PasswordModal<'a> {
-    pub textarea: TextArea<'a>,
-    pub error: Option<String>,
-    button_areas: Option<Vec<Rect>>,
+pub struct PasswordModal {
+    textarea: TextArea<'static>,
 }
 
-impl<'a> Default for PasswordModal<'a> {
+impl Default for PasswordModal {
     fn default() -> Self {
         let mut textarea = TextArea::default();
         textarea.set_style(Style::default().bg(Color::Black));
@@ -26,106 +25,59 @@ impl<'a> Default for PasswordModal<'a> {
 
         Self {
             textarea,
-            error: None,
-            button_areas: None,
         }
     }
 }
 
-impl<'a> PasswordModal<'a> {
-    pub fn render(&mut self, frame: &mut Frame, area: Rect) {
+impl ModalHandler for PasswordModal {
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn handle_key_event(&mut self, key_event: KeyEvent) -> Result<ModalAction> {
+        use crossterm::event::KeyCode;
+        
+        match key_event.code {
+            KeyCode::Enter => Ok(ModalAction::Custom("submit".to_string())),
+            KeyCode::Esc => Ok(ModalAction::Close),
+            _ => {
+                self.textarea.input(tui_textarea::Input::from(key_event));
+                Ok(ModalAction::None)
+            }
+        }
+    }
+
+    fn handle_mouse_event(&mut self, mouse_event: MouseEvent, area: Rect) -> Result<ModalAction> {
         let content = DialogContent {
             title: "Enter Password",
             content_widget: &self.textarea,
             buttons: vec![
-                DialogButton::new(
-                    "Cancel",
-                    Box::new(|| Ok(()))
-                ).with_theme(RED),
-                DialogButton::new(
-                    "Submit",
-                    Box::new(|| Ok(()))
-                ).with_theme(GREEN),
+                DialogButton::new("Cancel", "cancel").with_theme(RED),
+                DialogButton::new("Submit", "submit").with_theme(GREEN),
             ],
         };
 
-        let dialog = ModalDialog::new(content, None, Some(25));
-        
-        let modal_area = centered_rect(40, 25, area);
-        let inner_area = modal_area.inner(Default::default());
-        let button_areas = calculate_button_areas(inner_area);
-        self.button_areas = Some(button_areas);
-        
+        let dialog = ModalDialog::new(content);
+        dialog.handle_mouse_event(mouse_event, area)
+    }
+
+    fn render(&mut self, frame: &mut Frame, area: Rect) {
+        let content = DialogContent {
+            title: "Enter Password",
+            content_widget: &self.textarea,
+            buttons: vec![
+                DialogButton::new("Cancel", "cancel").with_theme(RED),
+                DialogButton::new("Submit", "submit").with_theme(GREEN),
+            ],
+        };
+
+        let dialog = ModalDialog::new(content).with_dimensions(40, 25);
         frame.render_widget(dialog, area);
     }
+}
 
-    pub fn handle_mouse_event(&self, event: MouseEvent) -> Option<PasswordAction> {
-        if let MouseEventKind::Down(MouseButton::Left) = event.kind {
-            if let Some(areas) = &self.button_areas {
-                let mouse_pos = (event.column, event.row);
-                
-                if point_in_rect(mouse_pos, areas[0]) {
-                    return Some(PasswordAction::Cancel);
-                }
-                
-                if point_in_rect(mouse_pos, areas[1]) {
-                    return Some(PasswordAction::Submit);
-                }
-            }
-        }
-        None
+impl PasswordModal {
+    pub fn get_password(&self) -> Option<String> {
+        self.textarea.lines().first().map(|s| s.to_string())
     }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum PasswordAction {
-    Cancel,
-    Submit,
-}
-
-fn point_in_rect(point: (u16, u16), rect: Rect) -> bool {
-    point.0 >= rect.x 
-        && point.0 < rect.x + rect.width
-        && point.1 >= rect.y 
-        && point.1 < rect.y + rect.height
-}
-
-fn calculate_button_areas(area: Rect) -> Vec<Rect> {
-    let button_layout = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(30),
-            Constraint::Length(12), // Cancel button
-            Constraint::Length(2),  // Gap
-            Constraint::Length(12), // Submit button
-            Constraint::Percentage(30),
-        ])
-        .split(Rect::new(
-            area.x,
-            area.y + area.height - 3,
-            area.width,
-            3
-        ));
-
-    vec![button_layout[1], button_layout[3]]
-}
-
-fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
-    let popup_layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage((100 - percent_y) / 2),
-            Constraint::Percentage(percent_y),
-            Constraint::Percentage((100 - percent_y) / 2),
-        ])
-        .split(r);
-
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage((100 - percent_x) / 2),
-            Constraint::Percentage(percent_x),
-            Constraint::Percentage((100 - percent_x) / 2),
-        ])
-        .split(popup_layout[1])[1]
 }

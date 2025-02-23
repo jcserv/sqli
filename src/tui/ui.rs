@@ -89,8 +89,9 @@ impl UI {
         self.render_status_message(app, frame, status_area);
         self.render_instructions(app, frame, instructions_area);
 
-        if let Some(password_modal) = &mut app.password_modal {
-            password_modal.render(frame, frame.area());
+        if app.modal_manager.is_modal_active() {
+            let area = frame.area();
+            app.modal_manager.render(frame, area);
         }
     }
 
