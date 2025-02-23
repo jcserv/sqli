@@ -1,6 +1,6 @@
-use std::{sync::mpsc, thread, time::Duration};
+use std::{sync::mpsc::{self, RecvError}, thread, time::Duration};
 use anyhow::Result;
-use crossterm::event::{self, KeyEvent, MouseEvent};
+use crossterm::event::{self, KeyCode, KeyEvent, KeyModifiers, MouseEvent, KeyEventKind, KeyEventState};
 
 #[derive(Debug)]
 pub enum Event {
@@ -12,6 +12,8 @@ pub enum Event {
 
 pub struct EventHandler {
     receiver: mpsc::Receiver<Event>,
+    #[allow(dead_code)]
+    sender: mpsc::Sender<Event>, // Keep sender in scope to prevent premature channel closure
 }
 
 impl EventHandler {
@@ -19,51 +21,69 @@ impl EventHandler {
         let (sender, receiver) = mpsc::channel();
         let tick_rate = Duration::from_millis(tick_rate);
 
+        let tick_sender = sender.clone();
+        let event_sender = sender.clone();
+
         thread::spawn(move || {
             let mut last_tick = std::time::Instant::now();
             loop {
+                if tick_sender.send(Event::Tick).is_err() {
+                    break;
+                }
+
                 let timeout = tick_rate
                     .checked_sub(last_tick.elapsed())
                     .unwrap_or(tick_rate);
 
-                if event::poll(timeout).expect("Failed to poll events") {
-                    match event::read().expect("Failed to read event") {
-                        event::Event::Key(key) => {
-                            if let Err(err) = sender.send(Event::Key(key)) {
-                                eprintln!("Failed to send key event: {}", err);
-                                return;
+                match event::poll(timeout) {
+                    Ok(true) => {
+                        match event::read() {
+                            Ok(event::Event::Key(key)) => {
+                                if event_sender.send(Event::Key(key)).is_err() {
+                                    break;
+                                }
                             }
-                        }
-                        event::Event::Mouse(mouse) => {
-                            if let Err(err) = sender.send(Event::Mouse(mouse)) {
-                                eprintln!("Failed to send mouse event: {}", err);
-                                return;
+                            Ok(event::Event::Mouse(mouse)) => {
+                                if event_sender.send(Event::Mouse(mouse)).is_err() {
+                                    break;
+                                }
                             }
-                        }
-                        event::Event::Resize(w, h) => {
-                            if let Err(err) = sender.send(Event::Resize(w, h)) {
-                                eprintln!("Failed to send resize event: {}", err);
-                                return;
+                            Ok(event::Event::Resize(w, h)) => {
+                                if event_sender.send(Event::Resize(w, h)).is_err() {
+                                    break;
+                                }
                             }
+                            _ => {}
                         }
-                        _ => {}
+                    }
+                    Ok(false) => {
+                    }
+                    Err(_) => {
+                        // Error polling events - likely interrupted
+                        break;
                     }
                 }
 
                 if last_tick.elapsed() >= tick_rate {
-                    if let Err(err) = sender.send(Event::Tick) {
-                        eprintln!("Failed to send tick event: {}", err);
-                        return;
-                    }
                     last_tick = std::time::Instant::now();
                 }
             }
         });
 
-        Self { receiver }
+        Self { receiver, sender }
     }
 
     pub fn next(&self) -> Result<Event> {
-        Ok(self.receiver.recv()?)
+        match self.receiver.recv() {
+            Ok(event) => Ok(event),
+            Err(RecvError) => {
+                Ok(Event::Key(KeyEvent {
+                    code: KeyCode::Char('c'),
+                    modifiers: KeyModifiers::CONTROL,
+                    kind: KeyEventKind::Press,
+                    state: KeyEventState::NONE,
+                }))
+            }
+        }
     }
 }

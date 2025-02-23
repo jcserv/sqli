@@ -97,8 +97,6 @@ impl CollectionsPane {
             Ok(content) => {
                 app.workspace.clear();
                 app.workspace.insert_str(&content);
-                
-                app.message = format!("Loaded {}/{}", collection_name, file_name);
             },
             Err(err) => {
                 app.message = format!("Error loading SQL file: {}", err);

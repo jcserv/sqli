@@ -1,17 +1,15 @@
 # todo
 
 ## tui
+- [ ] buttons: highlight on hover
+- [ ] pane navigation: tab between elements in pane
 - [ ] collections
   - [ ] display user/local
-- [X] execute query 
 - [ ] creating a sql file, saving to collection
 - [ ] results pane
   - [ ] pagination
-  - [ ] display number of rows, time taken 
-
-### bugs
-- [X] errors are displayed in the wrong place, leading to the tui getting shifted
-- [ ] password prompt
+- [ ] refactor: modal manager
+- [ ] refactor: on-click in bounds logic in modal widget
 
 ## cli
 - [ ] collections

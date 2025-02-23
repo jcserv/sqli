@@ -85,6 +85,8 @@ impl Instructions for WorkspacePane {
                         "Return ".white().into(),
                         " ^S ".blue().bold(),
                         "Save ".white().into(),
+                        " ^Space ".blue().bold(),
+                        "Run ".white().into(),
                         // " ^F ".blue().bold(),
                         // "Find ".white().into(),
                         // " ^R ".blue().bold(),
@@ -148,7 +150,6 @@ impl Navigable for WorkspacePane {
         if !app.navigation.is_active(PaneId::Workspace) {
             return Ok(false);
         }
-        
         match app.mode {
             Mode::Normal => {
                 if app.is_pane_in_edit_mode(PaneId::Workspace) {
@@ -168,23 +169,14 @@ impl Navigable for WorkspacePane {
                             app.search.textarea.delete_line_by_head();
                             Ok(false)
                         }
-                        KeyCode::Char('r') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
-                            app.mode = Mode::Search;
-                            app.search.open = true;
-                            app.search.replace_mode = true;
-                            app.search.textarea.move_cursor(tui_textarea::CursorMove::End);
-                            app.search.textarea.delete_line_by_head();
-                            Ok(false)
-                        }
-                        KeyCode::Enter | KeyCode::Char(' ') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                        // TODO: I would like this to be a Ctrl+Enter shortcut, but it doesn't work
+                        // see: https://github.com/crossterm-rs/crossterm/issues/685
+                        KeyCode::Char(' ') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
                             app.pending_command = AppCommand::ExecuteQuery;
-                            app.message = "Executing query...".to_string();
-                            
                             self.deactivate(app)?;
                             Ok(false)
-                        },
+                        }
                         _ => {
-                            // Forward all other keys to the text area
                             let input = tui_textarea::Input::from(key_event);
                             app.workspace.input(input);
                             Ok(false)

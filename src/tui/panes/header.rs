@@ -141,7 +141,6 @@ impl Navigable for HeaderPane {
     
                 if mouse_event.column >= button_x_start && mouse_event.column <= button_x_end {
                     app.pending_command = AppCommand::ExecuteQuery;
-                    app.message = "Executing query...".to_string();
                     return Ok(false);
                 }
             }

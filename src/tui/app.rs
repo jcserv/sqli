@@ -5,11 +5,12 @@ use ratatui::widgets::Borders;
 use tui_textarea::TextArea;
 use tui_tree_widget::{TreeItem, TreeState};
 
-use crate::query::execute_query;
+use crate::query::{self, execute_query};
 use crate::sql::interface::QueryResult;
 
 use super::navigation::{NavigationManager, PaneId};
 use super::ui::UI;
+use super::widgets::password_modal::{PasswordAction, PasswordModal};
 use super::widgets::searchable_textarea::SearchableTextArea;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -17,6 +18,7 @@ pub enum Mode {
     Normal,
     Command,
     Search,
+    Password,
 }
 
 pub struct SearchBox<'a> {
@@ -87,6 +89,8 @@ pub struct App<'a> {
     pub workspace: SearchableTextArea<'a>,
     pub search: SearchBox<'a>,
     pub query_result: QueryResult,
+    pub password_modal: Option<PasswordModal<'a>>,
+    pub current_password: Option<String>,
 
     pub should_quit: bool,
 }
@@ -119,6 +123,8 @@ impl<'a> App<'a> {
             workspace,
             search: SearchBox::default(),
             query_result: QueryResult::default(), 
+            password_modal: None,
+            current_password: None,
             should_quit: false,
         }
     }
@@ -134,35 +140,32 @@ impl<'a> App<'a> {
                     Ok(result) => {
                         match result.command {
                             AppCommand::ExecuteQuery => {
-                                // Execute the actual query and store results
                                 let sql = self.workspace.get_content();
-                                match &self.selected_connection {
-                                    Some(connection_name) => {
-                                        match tokio::task::block_in_place(|| {
-                                            futures::executor::block_on(async {
-                                                execute_query(
-                                                    sql,
-                                                    None,
-                                                    Some(connection_name.clone())
-                                                ).await
-                                            })
-                                        }) {
-                                            Ok(query_result) => {
-                                                self.query_result = query_result;
-                                                self.message = format!(
-                                                    "Query executed successfully in {}ms",
-                                                    self.query_result.execution_time.as_millis()
-                                                );
-                                            }
-                                            Err(e) => {
-                                                self.message = format!("Error executing query: {}", e);
-                                                self.query_result = QueryResult::empty();
-                                            }
-                                        }
+                                let connection = self.selected_connection.clone();
+                                match tokio::task::block_in_place(|| {
+                                    futures::executor::block_on(async {
+                                        crate::query::execute_query(
+                                            sql,
+                                            None,
+                                            connection,
+                                            self.current_password.clone(),
+                                        ).await
+                                    })
+                                }) {
+                                    Ok(query_result) => {
+                                        self.query_result = query_result;
+                                        self.message = format!(
+                                            "Query executed successfully in {}ms",
+                                            self.query_result.execution_time.as_millis()
+                                        );
                                     }
-                                    None => {
-                                        self.message = "No connection selected".to_string();
-                                        self.query_result = QueryResult::empty();
+                                    Err(e) => {
+                                        if e.to_string().contains("password authentication failed") {
+                                            self.show_password_prompt();
+                                        } else {
+                                            self.message = format!("Error executing query: {}", e);
+                                            self.query_result = QueryResult::empty();
+                                        }
                                     }
                                 }
                             },
@@ -172,7 +175,6 @@ impl<'a> App<'a> {
                             AppCommand::None => {},
                         }
     
-                        // Set any message from the async operation
                         if let Some(msg) = result.message {
                             self.message = msg;
                         }
@@ -189,27 +191,7 @@ impl<'a> App<'a> {
         if self.pending_command != AppCommand::None {
             match self.pending_command {
                 AppCommand::ExecuteQuery => {
-                    let sql = self.workspace.get_content();
-                    let connection = self.selected_connection.clone();
-                    
-                    let handle = tokio::spawn(async move {
-                        if let Some(conn_name) = connection {
-                            match execute_query(sql, None, Some(conn_name)).await {
-                                Ok(_) => AsyncCommandResult::new(AppCommand::ExecuteQuery),
-                                Err(e) => AsyncCommandResult::with_message(
-                                    AppCommand::ExecuteQuery,
-                                    format!("Query error: {}", e)
-                                ),
-                            }
-                        } else {
-                            AsyncCommandResult::with_message(
-                                AppCommand::ExecuteQuery,
-                                "No connection selected".to_string()
-                            )
-                        }
-                    });
-                    
-                    self.pending_async_operation = Some(handle);
+                    self.check_and_execute_query();
                 },
                 AppCommand::SaveQuery => {
                     self.save_query();
@@ -236,103 +218,92 @@ impl<'a> App<'a> {
                 return Ok(false);
             }
             _ => {
-                return ui.handle_key_event(self, key_event);
+                match self.mode {
+                    Mode::Password => {
+                        match key_event.code {
+                            KeyCode::Enter => {
+                                self.handle_password_submit();
+                                Ok(false)
+                            }
+                            KeyCode::Esc => {
+                                self.close_password_prompt();
+                                Ok(false)
+                            }
+                            _ => {
+                                if let Some(modal) = &mut self.password_modal {
+                                    modal.textarea.input(tui_textarea::Input::from(key_event));
+                                }
+                                Ok(false)
+                            }
+                        }
+                    }
+                    _ => {
+                        return ui.handle_key_event(self, key_event);
+                    }
+                }
             }
         }
     }
 
     pub fn handle_mouse(&mut self, ui: &super::ui::UI, mouse_event: MouseEvent) -> anyhow::Result<bool> {
+        if let Some(modal) = &self.password_modal {
+            if let Some(action) = modal.handle_mouse_event(mouse_event) {
+                match action {
+                    PasswordAction::Cancel => {
+                        self.close_password_prompt();
+                    }
+                    PasswordAction::Submit => {
+                        self.handle_password_submit();
+                    }
+                }
+                return Ok(false);
+            }
+        }
+        
         ui.handle_mouse_event(self, mouse_event)
     }
 
-    // fn handle_search_mode(&mut self, key_event: KeyEvent) -> anyhow::Result<bool> {
-    //     let input = Input::from(key_event);
-    //     match input {
-    //         Input { key: Key::Esc, .. } => {
-    //             self.search.open = false;
-    //             self.mode = Mode::Normal;
-    //             self.workspace.set_search_pattern("")?;
-    //             Ok(false)
-    //         }
-    //         Input { key: Key::Enter, .. } => {
-    //             if self.search.replace_mode {
-    //                 let pattern = self.search.textarea.lines()[0].as_str();
-    //                 let replacement = self.search.textarea.lines().get(1).map(|s| s.as_str()).unwrap_or("");
-    //                 self.workspace.set_search_pattern(pattern)?;
-    //                 if key_event.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
-    //                     let count = self.workspace.replace_all(replacement);
-    //                     self.message = format!("Replaced {} occurrences", count);
-    //                 } else {
-    //                     if self.workspace.replace_next(replacement) {
-    //                         self.message = "Replaced occurrence".to_string();
-    //                     } else {
-    //                         self.message = "No more matches".to_string();
-    //                     }
-    //                 }
-    //             } else {
-    //                 let pattern = self.search.textarea.lines()[0].as_str();
-    //                 self.workspace.set_search_pattern(pattern)?;
-    //                 if !self.workspace.search_forward(true) {
-    //                     self.message = "Pattern not found".to_string();
-    //                 }
-    //             }
-    //             self.search.open = false;
-    //             self.mode = Mode::Normal;
-    //             Ok(false)
-    //         }
-    //         Input { 
-    //             key: Key::Char('n'),
-    //             ctrl: true,
-    //             ..
-    //         } => {
-    //             if !self.workspace.search_forward(false) {
-    //                 self.message = "Pattern not found".to_string();
-    //             }
-    //             Ok(false)
-    //         }
-    //         Input {
-    //             key: Key::Char('p'),
-    //             ctrl: true,
-    //             ..
-    //         } => {
-    //             if !self.workspace.search_back(false) {
-    //                 self.message = "Pattern not found".to_string();
-    //             }
-    //             Ok(false)
-    //         }
-    //         _ => {
-    //             self.search.textarea.input(input);
-    //             if let Some(pattern) = self.search.textarea.lines().first() {
-    //                 self.workspace.set_search_pattern(pattern)?;
-    //             }
-    //             Ok(false)
-    //         }
-    //     }
-    // }
-
-    pub async fn execute_query(&mut self) {
-        let sql = self.workspace.get_content();
-        
-        let result = match &self.selected_connection {
-            Some(connection_name) => {
-                crate::query::execute_query(sql, None, Some(connection_name.clone())).await
-            },
-            None => {
-                self.message = "No connection selected".to_string();
-                return;
-            }
-        };
-    
-        match result {
-            Ok(query_result) => {
-                self.query_result = query_result;
-                self.message = format!("Query executed in {}ms", self.query_result.execution_time.as_millis());
-            },
-            Err(err) => {
-                self.message = format!("Error executing query: {}", err);
-                self.query_result = QueryResult::empty();
+    pub fn check_and_execute_query(&mut self) {
+        if let Some(conn_name) = &self.selected_connection {
+            match query::get_connection(conn_name) {
+                Ok(Some(conn)) => {
+                    if let Some(pwd) = &self.current_password {
+                        self.execute_query_with_password(Some(pwd.clone()));
+                        return;
+                    }
+                    if conn.requires_password() {
+                        self.show_password_prompt();
+                        return;
+                    }
+                }
+                Ok(None) => {
+                    self.message = format!("Connection '{}' not found", conn_name);
+                    return;
+                }
+                Err(e) => {
+                    self.message = format!("Error checking connection: {}", e);
+                    return;
+                }
             }
         }
+        self.execute_query_with_password(None);
+    }
+
+    fn execute_query_with_password(&mut self, password: Option<String>) {
+        let sql = self.workspace.get_content();
+        let connection = self.selected_connection.clone();
+
+        let handle = tokio::spawn(async move {
+            match execute_query(sql, None, connection, password).await {
+                Ok(_) => AsyncCommandResult::new(AppCommand::ExecuteQuery),
+                Err(e) => AsyncCommandResult::with_message(
+                    AppCommand::ExecuteQuery,
+                    format!("Query error: {}", e)
+                ),
+            }
+        });
+        
+        self.pending_async_operation = Some(handle);
     }
 
     pub fn save_query(&mut self) {
@@ -341,7 +312,27 @@ impl<'a> App<'a> {
             // TODO
         }
     }
-    
+
+    pub fn show_password_prompt(&mut self) {
+        self.password_modal = Some(PasswordModal::default());
+        self.mode = Mode::Password;
+    }
+
+    pub fn handle_password_submit(&mut self) {
+        let password = self.password_modal.as_ref()
+            .and_then(|modal| modal.textarea.lines().first())
+            .map(|line| line.clone());
+        self.current_password = password.clone();
+        self.execute_query_with_password(password);
+        self.password_modal = None;
+        self.mode = Mode::Normal;
+    }
+
+    pub fn close_password_prompt(&mut self) {
+        self.password_modal = None;
+        self.mode = Mode::Normal;
+    }
+
     pub fn is_collections_active(&self) -> bool {
         self.navigation.is_active(PaneId::Collections)
     }
