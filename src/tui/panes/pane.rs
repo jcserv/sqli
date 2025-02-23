@@ -18,6 +18,10 @@ pub trait Pane {
     
     /// Get the title for this pane
     fn title(&self) -> &'static str;
+
+    fn title_bottom(&self, _app: &App) -> String {
+        String::new()
+    }
     
     /// Render the pane's content
     fn render_content(&mut self, app: &mut App, frame: &mut Frame, area: Rect);
@@ -66,11 +70,16 @@ pub trait PaneExt: Pane {
             FocusType::Inactive => Style::default().fg(Color::White),
         };
 
-        let block = Block::default()
+        let mut block = Block::default()
             .title(self.title())
             .title_style(focus_style)
             .borders(Borders::ALL)
             .border_style(focus_style);
+
+        let title_bottom = self.title_bottom(app);
+        if !title_bottom.is_empty() {
+            block = block.title_bottom(title_bottom);
+        }
 
         let inner_area = block.inner(area);
         frame.render_widget(block, area);
@@ -112,7 +121,7 @@ pub trait PaneExt: Pane {
         match mouse_event.kind {
             MouseEventKind::Down(MouseButton::Left) => {
                 if self.handle_custom_mouse_event(app, mouse_event)? {
-                    return Ok(true);
+                    return Ok(false);
                 }
 
                 if app.navigation.is_active(self.pane_id()) {

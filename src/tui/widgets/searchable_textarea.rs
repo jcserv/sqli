@@ -1,4 +1,4 @@
-use ratatui::{style::{Color, Style}, widgets::{Block, Borders, Widget}};
+use ratatui::{style::{Color, Style}, widgets::{Block, Widget}};
 use std::ops::{Deref, DerefMut};
 use tui_textarea::TextArea;
 
@@ -79,8 +79,6 @@ impl<'a> SearchableTextArea<'a> {
         
         self.set_block(
             Block::default()
-                .borders(Borders::ALL)
-                .title("Workspace")
         );
         self.set_line_number_style(Style::default().bg(Color::DarkGray));
         self.set_cursor_line_style(Style::default());

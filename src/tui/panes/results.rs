@@ -68,17 +68,17 @@ impl Pane for ResultsPane {
         "Results"
     }
 
-    fn render_content(&mut self, app: &mut App, frame: &mut Frame, area: Rect) {
-        let execution_time_ms = app.query_state.query_result.execution_time.as_millis();    
+    fn title_bottom(&self, app: &App) -> String {
+        let execution_time_ms = app.query_state.query_result.execution_time.as_millis();
         let status_text = format!(
-            " Query time: {}ms | {} rows ", 
+            "Query time: {}ms | {} rows",
             execution_time_ms,
-            app.query_state.query_result.row_count, 
+            app.query_state.query_result.row_count,
         );
-        let status_line = Line::from(status_text);
-        
-        frame.render_widget(Paragraph::new(status_line), area);
+        status_text
+    }
 
+    fn render_content(&mut self, app: &mut App, frame: &mut Frame, area: Rect) {
         let header_cells = app.query_state.query_result.columns.iter()
             .map(|h| Cell::from(h.as_str()).style(Style::default().bold()));
         let header = Row::new(header_cells)

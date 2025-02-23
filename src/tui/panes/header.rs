@@ -155,7 +155,7 @@ impl Pane for HeaderPane {
             MouseEventKind::Down(MouseButton::Left) => {
                 if self.is_mouse_event_on_button(mouse_event) {
                     app.query_state.pending_command = AppCommand::ExecuteQuery;
-                    return Ok(true);
+                    return Ok(false);
                 }
                 Ok(false)
             },
