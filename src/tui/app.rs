@@ -54,6 +54,16 @@ impl AsyncCommandResult {
     }
 }
 
+// UI-specific state
+pub struct UIState<'a> {
+    pub message: String,
+    pub collection_state: TreeState<String>,
+    pub collection_items: Vec<TreeItem<'a, String>>,
+    pub workspace: SearchableTextArea<'a>,
+    pub search: SearchBox<'a>,
+    pub command_input: String,
+}
+
 // Handles the search interface state
 pub struct SearchBox<'a> {
     pub textarea: TextArea<'a>,
@@ -77,27 +87,23 @@ impl Default for SearchBox<'_> {
     }
 }
 
-pub struct App<'a> {
-    pub mode: Mode,
-    pub message: String,
-    pub navigation: NavigationManager,
-    pub modal_manager: ModalManager,
-
+// Query-related state
+pub struct QueryState {
+    pub selected_connection: Option<String>,
+    pub current_password: Option<String>, 
+    pub query_result: QueryResult,
     pub pending_command: AppCommand,
     pub pending_async_operation: Option<tokio::task::JoinHandle<AsyncCommandResult>>,
+}
 
-    pub command_input: String,
-    pub selected_connection: Option<String>,
-
-    pub collection_state: TreeState<String>,
-    pub collection_items: Vec<TreeItem<'a, String>>,
-    pub workspace: SearchableTextArea<'a>,
-    pub search: SearchBox<'a>,
-    
-    pub current_password: Option<String>,
-    pub query_result: QueryResult,
-
+pub struct App<'a> {
+    pub mode: Mode,
     pub should_quit: bool,
+    
+    pub ui_state: UIState<'a>,
+    pub query_state: QueryState,
+    pub navigation: NavigationManager,
+    pub modal_manager: ModalManager,
 }
 
 // Core application initialization and state
@@ -114,24 +120,29 @@ impl<'a> App<'a> {
         navigation.register_pane(PaneId::Workspace, 1);
         navigation.register_pane(PaneId::Results, 1);
 
-        let connection = Some("nopass".to_string());
-        
         Self {
-            command_input: String::new(),
             mode: Mode::Normal,
-            message: String::new(),
-            pending_command: AppCommand::None,
-            pending_async_operation: None,
-            selected_connection: connection,
+            should_quit: false,
+            
+            ui_state: UIState {
+                message: String::new(),
+                collection_state: TreeState::default(),
+                collection_items,
+                workspace,
+                search: SearchBox::default(),
+                command_input: String::new(),
+            },
+            
+            query_state: QueryState {
+                selected_connection: Some("nopass".to_string()),
+                current_password: None,
+                query_result: QueryResult::default(),
+                pending_command: AppCommand::None,
+                pending_async_operation: None,
+            },
+            
             navigation,
             modal_manager: ModalManager::new(),
-            collection_state: TreeState::default(),
-            collection_items,
-            workspace,
-            search: SearchBox::default(),
-            query_result: QueryResult::default(), 
-            current_password: None,
-            should_quit: false,
         }
     }
 
@@ -165,10 +176,10 @@ impl<'a> App<'a> {
 // Query execution and management
 impl<'a> App<'a> {
     pub fn check_and_execute_query(&mut self) {
-        if let Some(conn_name) = &self.selected_connection {
+        if let Some(conn_name) = &self.query_state.selected_connection {
             match query::get_connection(conn_name) {
                 Ok(Some(conn)) => {
-                    if let Some(pwd) = &self.current_password {
+                    if let Some(pwd) = &self.query_state.current_password {
                         self.execute_query_with_password(Some(pwd.clone()));
                         return;
                     }
@@ -178,11 +189,11 @@ impl<'a> App<'a> {
                     }
                 }
                 Ok(None) => {
-                    self.message = format!("Connection '{}' not found", conn_name);
+                    self.ui_state.message = format!("Connection '{}' not found", conn_name);
                     return;
                 }
                 Err(e) => {
-                    self.message = format!("Error checking connection: {}", e);
+                    self.ui_state.message = format!("Error checking connection: {}", e);
                     return;
                 }
             }
@@ -191,8 +202,8 @@ impl<'a> App<'a> {
     }
 
     fn execute_query_with_password(&mut self, password: Option<String>) {
-        let sql = self.workspace.get_content();
-        let connection = self.selected_connection.clone();
+        let sql = self.ui_state.workspace.get_content();
+        let connection = self.query_state.selected_connection.clone();
 
         let handle = tokio::spawn(async move {
             match execute_query(sql, None, connection, password).await {
@@ -204,74 +215,13 @@ impl<'a> App<'a> {
             }
         });
         
-        self.pending_async_operation = Some(handle);
+        self.query_state.pending_async_operation = Some(handle);
     }
 
     pub fn save_query(&mut self) {
-        let content = self.workspace.get_content();
+        let content = self.ui_state.workspace.get_content();
         if !content.is_empty() {
             // TODO: Implement save functionality
-        }
-    }
-}
-
-// Async operation handling
-impl<'a> App<'a> {
-    pub fn process_async_results(&mut self) {
-        if let Some(handle) = &mut self.pending_async_operation {
-            if handle.is_finished() {
-                let handle = std::mem::take(&mut self.pending_async_operation).unwrap();
-                
-                match tokio::task::block_in_place(|| futures::executor::block_on(async {
-                    handle.await
-                })) {
-                    Ok(result) => {
-                        match result.command {
-                            AppCommand::ExecuteQuery => {
-                                let sql = self.workspace.get_content();
-                                let connection = self.selected_connection.clone();
-                                match tokio::task::block_in_place(|| {
-                                    futures::executor::block_on(async {
-                                        execute_query(
-                                            sql,
-                                            None,
-                                            connection,
-                                            self.current_password.clone(),
-                                        ).await
-                                    })
-                                }) {
-                                    Ok(query_result) => {
-                                        self.query_result = query_result;
-                                        self.message = format!(
-                                            "Query executed successfully in {}ms",
-                                            self.query_result.execution_time.as_millis()
-                                        );
-                                    }
-                                    Err(e) => {
-                                        if e.to_string().contains("password authentication failed") {
-                                            self.show_password_prompt();
-                                        } else {
-                                            self.message = format!("Error executing query: {}", e);
-                                            self.query_result = QueryResult::empty();
-                                        }
-                                    }
-                                }
-                            },
-                            AppCommand::SaveQuery => {
-                                self.save_query();
-                            },
-                            AppCommand::None => {},
-                        }
-    
-                        if let Some(msg) = result.message {
-                            self.message = msg;
-                        }
-                    },
-                    Err(e) => {
-                        self.message = format!("Error in async operation: {}", e);
-                    }
-                }
-            }
         }
     }
 }
@@ -279,8 +229,8 @@ impl<'a> App<'a> {
 // Event handling
 impl<'a> App<'a> {
     pub fn tick(&mut self) {
-        if self.pending_command != AppCommand::None {
-            match self.pending_command {
+        if self.query_state.pending_command != AppCommand::None {
+            match self.query_state.pending_command {
                 AppCommand::ExecuteQuery => {
                     self.check_and_execute_query();
                 },
@@ -290,7 +240,7 @@ impl<'a> App<'a> {
                 AppCommand::None => {},
             }
             
-            self.pending_command = AppCommand::None;
+            self.query_state.pending_command = AppCommand::None;
         }
     }
 
@@ -343,8 +293,8 @@ impl<'a> App<'a> {
                 match action.as_str() {
                     "submit" => {
                         if let Some(modal) = self.modal_manager.get_active_modal_as::<PasswordModal>() {
-                            self.current_password = modal.get_password();
-                            self.execute_query_with_password(self.current_password.clone());
+                            self.query_state.current_password = modal.get_password();
+                            self.execute_query_with_password(self.query_state.current_password.clone());
                         }
                         self.close_modal();
                     }
@@ -368,8 +318,8 @@ impl<'a> App<'a> {
                 match action.as_str() {
                     "submit" => {
                         if let Some(modal) = self.modal_manager.get_active_modal_as::<PasswordModal>() {
-                            self.current_password = modal.get_password();
-                            self.execute_query_with_password(self.current_password.clone());
+                            self.query_state.current_password = modal.get_password();
+                            self.execute_query_with_password(self.query_state.current_password.clone());
                         }
                         self.close_modal();
                     }
@@ -392,5 +342,66 @@ impl<'a> App<'a> {
     pub fn show_password_prompt(&mut self) {
         self.modal_manager.show_modal(ModalType::Password);
         self.mode = Mode::Password;
+    }
+}
+
+// Async operation handling
+impl<'a> App<'a> {
+    pub fn process_async_results(&mut self) {
+        if let Some(handle) = &mut self.query_state.pending_async_operation {
+            if handle.is_finished() {
+                let handle = std::mem::take(&mut self.query_state.pending_async_operation).unwrap();
+                
+                match tokio::task::block_in_place(|| futures::executor::block_on(async {
+                    handle.await
+                })) {
+                    Ok(result) => {
+                        match result.command {
+                            AppCommand::ExecuteQuery => {
+                                let sql = self.ui_state.workspace.get_content();
+                                let connection = self.query_state.selected_connection.clone();
+                                match tokio::task::block_in_place(|| {
+                                    futures::executor::block_on(async {
+                                        execute_query(
+                                            sql,
+                                            None,
+                                            connection,
+                                            self.query_state.current_password.clone(),
+                                        ).await
+                                    })
+                                }) {
+                                    Ok(query_result) => {
+                                        self.query_state.query_result = query_result;
+                                        self.ui_state.message = format!(
+                                            "Query executed successfully in {}ms",
+                                            self.query_state.query_result.execution_time.as_millis()
+                                        );
+                                    }
+                                    Err(e) => {
+                                        if e.to_string().contains("password authentication failed") {
+                                            self.show_password_prompt();
+                                        } else {
+                                            self.ui_state.message = format!("Error executing query: {}", e);
+                                            self.query_state.query_result = QueryResult::empty();
+                                        }
+                                    }
+                                }
+                            },
+                            AppCommand::SaveQuery => {
+                                self.save_query();
+                            },
+                            AppCommand::None => {},
+                        }
+    
+                        if let Some(msg) = result.message {
+                            self.ui_state.message = msg;
+                        }
+                    },
+                    Err(e) => {
+                        self.ui_state.message = format!("Error in async operation: {}", e);
+                    }
+                }
+            }
+        }
     }
 }

@@ -58,7 +58,7 @@ impl HeaderPane {
             .border_style(focus_style);
         
         frame.render_widget(&connection_block, conn_area);
-        let connection_name = app.selected_connection.clone().unwrap_or_else(|| "No connection selected".to_string());
+        let connection_name = app.query_state.selected_connection.clone().unwrap_or_else(|| "No connection selected".to_string());
         frame.render_widget(Span::raw(connection_name), connection_block.inner(conn_area));
         self.render_connection_button(frame, connection_block.inner(conn_area));
     }
@@ -140,7 +140,7 @@ impl Navigable for HeaderPane {
                 let button_x_end = terminal_width.saturating_sub(2);
     
                 if mouse_event.column >= button_x_start && mouse_event.column <= button_x_end {
-                    app.pending_command = AppCommand::ExecuteQuery;
+                    app.query_state.pending_command = AppCommand::ExecuteQuery;
                     return Ok(false);
                 }
             }

@@ -32,11 +32,11 @@ impl ResultsPane {
             FocusType::Inactive => Style::default().fg(Color::White),
         };
 
-        let execution_time_ms = app.query_result.execution_time.as_millis();    
+        let execution_time_ms = app.query_state.query_result.execution_time.as_millis();    
         let status_text = format!(
             " Query time: {}ms | {} rows ", 
             execution_time_ms,
-            app.query_result.row_count, 
+            app.query_state.query_result.row_count, 
         );
         let status_line = Line::from(status_text);
     
@@ -52,17 +52,17 @@ impl ResultsPane {
         let inner_area = block.inner(area);
         frame.render_widget(block, area);
         
-        let header_cells = app.query_result.columns.iter()
+        let header_cells = app.query_state.query_result.columns.iter()
             .map(|h| Cell::from(h.as_str()).style(Style::default().bold()));
         let header = Row::new(header_cells)
             .style(Style::default().bg(Color::DarkGray))
             .height(1);
     
-        let constraints = calculate_column_constraints(&app.query_result);
+        let constraints = calculate_column_constraints(&app.query_state.query_result);
         
-        let row_count = app.query_result.rows.len();
+        let row_count = app.query_state.query_result.rows.len();
 
-        if row_count == 0 || app.query_result.columns.is_empty() {
+        if row_count == 0 || app.query_state.query_result.columns.is_empty() {
             let empty_message = Paragraph::new("No query results to display. Run a query using the button above.")
                 .alignment(Alignment::Center)
                 .style(Style::default().fg(Color::DarkGray));
@@ -71,7 +71,7 @@ impl ResultsPane {
             return;
         }
             
-        let rows = app.query_result.rows.iter().map(|item| {
+        let rows = app.query_state.query_result.rows.iter().map(|item| {
             let cells = item.iter().map(|c| Cell::from(c.as_str()));
             Row::new(cells).height(1)
         });
@@ -197,11 +197,11 @@ impl Navigable for ResultsPane {
                         self.deactivate(app)
                     },
                     KeyCode::Up => {
-                        self.previous_row(app.query_result.rows.len().saturating_sub(1));
+                        self.previous_row(app.query_state.query_result.rows.len().saturating_sub(1));
                         Ok(false)
                     },
                     KeyCode::Down => {
-                        self.next_row(app.query_result.rows.len().saturating_sub(1));
+                        self.next_row(app.query_state.query_result.rows.len().saturating_sub(1));
                         Ok(false)
                     },
                     _ => Ok(false)

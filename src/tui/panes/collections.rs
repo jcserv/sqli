@@ -40,7 +40,7 @@ impl CollectionsPane {
             FocusType::Inactive => Style::default().fg(Color::White),
         };
 
-        let tree = FileTree::new(&app.collection_items)
+        let tree = FileTree::new(&app.ui_state.collection_items)
             .expect("all item identifiers are unique")
             .block(
                 Block::default()
@@ -62,7 +62,7 @@ impl CollectionsPane {
                     .end_symbol(None)
             ));
 
-        frame.render_stateful_widget(tree, area, &mut app.collection_state);
+        frame.render_stateful_widget(tree, area, &mut app.ui_state.collection_state);
     }
 
     pub fn load_collections() -> Vec<tui_tree_widget::TreeItem<'static, String>> {
@@ -76,7 +76,7 @@ impl CollectionsPane {
     }
 
     pub fn handle_selection(&self, app: &mut App) -> anyhow::Result<()> {
-        let selected = app.collection_state.selected();
+        let selected = app.ui_state.collection_state.selected();
         if selected.is_empty() {
             return Ok(());
         }
@@ -95,11 +95,11 @@ impl CollectionsPane {
             
         match load_sql_content(collection_name, file_name) {
             Ok(content) => {
-                app.workspace.clear();
-                app.workspace.insert_str(&content);
+                app.ui_state.workspace.clear();
+                app.ui_state.workspace.insert_str(&content);
             },
             Err(err) => {
-                app.message = format!("Error loading SQL file: {}", err);
+                app.ui_state.message = format!("Error loading SQL file: {}", err);
             },
         }
         return Ok(());
@@ -174,24 +174,24 @@ impl Navigable for CollectionsPane {
                         self.deactivate(app)
                     },
                     KeyCode::Enter | KeyCode::Char(' ') => {
-                        app.collection_state.toggle_selected();
+                        app.ui_state.collection_state.toggle_selected();
                         self.handle_selection(app)?;
                         Ok(false)
                     },
                     KeyCode::Left => {
-                        app.collection_state.key_left();
+                        app.ui_state.collection_state.key_left();
                         Ok(false)
                     },
                     KeyCode::Right => {
-                        app.collection_state.key_right();
+                        app.ui_state.collection_state.key_right();
                         Ok(false)
                     },
                     KeyCode::Down => {
-                        app.collection_state.key_down();
+                        app.ui_state.collection_state.key_down();
                         Ok(false)
                     },
                     KeyCode::Up => {
-                        app.collection_state.key_up();
+                        app.ui_state.collection_state.key_up();
                         Ok(false)
                     },
                     _ => Ok(false)
@@ -205,8 +205,8 @@ impl Navigable for CollectionsPane {
         app.navigation.activate_pane(PaneId::Collections)?;
 
         if let Some(area) = self.last_area {
-            let tree = FileTree::new(&app.collection_items).expect("all item identifiers are unique");
-            if tree.handle_mouse_event(&mut app.collection_state, mouse_event, area)? {
+            let tree = FileTree::new(&app.ui_state.collection_items).expect("all item identifiers are unique");
+            if tree.handle_mouse_event(&mut app.ui_state.collection_state, mouse_event, area)? {
                 app.navigation.start_editing(PaneId::Collections)?;
                 self.handle_selection(app)?;
                 return Ok(false);

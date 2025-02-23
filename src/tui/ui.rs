@@ -42,7 +42,7 @@ impl UI {
     }
 
     pub fn render(&mut self, app: &mut App, frame: &mut Frame) {
-        let search_height = if app.search.open { 3 } else { 0 };
+        let search_height = if app.ui_state.search.open { 3 } else { 0 };
 
         let chunks = Layout::default()
             .direction(Direction::Vertical)
@@ -96,13 +96,13 @@ impl UI {
     }
 
     fn render_status_message(&self, app: &App, frame: &mut Frame, area: Rect) {
-        let message_style = if app.message.starts_with("Error") {
+        let message_style = if app.ui_state.message.starts_with("Error") {
             Style::default().fg(Color::Red)
         } else {
             Style::default().fg(Color::Green)
         };
         
-        let message = Paragraph::new(app.message.as_str())
+        let message = Paragraph::new(app.ui_state.message.as_str())
             .style(message_style);
             
         frame.render_widget(message, area);

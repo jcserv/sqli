@@ -39,10 +39,10 @@ impl WorkspacePane {
             .borders(Borders::ALL)
             .border_style(workspace_focus);
 
-        let mut workspace_widget = app.workspace.clone();
+        let mut workspace_widget = app.ui_state.workspace.clone();
         workspace_widget.set_block(block);
         
-        if !app.search.open {
+        if !app.ui_state.search.open {
             frame.render_widget(&workspace_widget, area);
             return;
         }
@@ -61,12 +61,12 @@ impl WorkspacePane {
             search_height
         );
         
-        frame.render_widget(&app.search.textarea, search_area);
+        frame.render_widget(&app.ui_state.search.textarea, search_area);
         frame.render_widget(&workspace_widget, workspace_area);
     }
 
     pub fn update_dimensions(&self, app: &mut App, height: u16) {
-        app.workspace.update_dimensions(height);
+        app.ui_state.workspace.update_dimensions(height);
     }
 }
 
@@ -112,7 +112,7 @@ impl Instructions for WorkspacePane {
                 }
             },
             Mode::Search => {
-                if app.search.replace_mode {
+                if app.ui_state.search.replace_mode {
                     Line::from(vec![
                         " ESC ".blue().bold(),
                         "Cancel ".white().into(),
@@ -163,22 +163,22 @@ impl Navigable for WorkspacePane {
                         }
                         KeyCode::Char('f') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
                             app.mode = Mode::Search;
-                            app.search.open = true;
-                            app.search.replace_mode = false;
-                            app.search.textarea.move_cursor(tui_textarea::CursorMove::End);
-                            app.search.textarea.delete_line_by_head();
+                            app.ui_state.search.open = true;
+                            app.ui_state.search.replace_mode = false;
+                            app.ui_state.search.textarea.move_cursor(tui_textarea::CursorMove::End);
+                            app.ui_state.search.textarea.delete_line_by_head();
                             Ok(false)
                         }
                         // TODO: I would like this to be a Ctrl+Enter shortcut, but it doesn't work
                         // see: https://github.com/crossterm-rs/crossterm/issues/685
                         KeyCode::Char(' ') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
-                            app.pending_command = AppCommand::ExecuteQuery;
+                            app.query_state.pending_command = AppCommand::ExecuteQuery;
                             self.deactivate(app)?;
                             Ok(false)
                         }
                         _ => {
                             let input = tui_textarea::Input::from(key_event);
-                            app.workspace.input(input);
+                            app.ui_state.workspace.input(input);
                             Ok(false)
                         }
                     }
@@ -189,10 +189,10 @@ impl Navigable for WorkspacePane {
                         }
                         KeyCode::Char('f') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
                             app.mode = Mode::Search;
-                            app.search.open = true;
-                            app.search.replace_mode = false;
-                            app.search.textarea.move_cursor(tui_textarea::CursorMove::End);
-                            app.search.textarea.delete_line_by_head();
+                            app.ui_state.search.open = true;
+                            app.ui_state.search.replace_mode = false;
+                            app.ui_state.search.textarea.move_cursor(tui_textarea::CursorMove::End);
+                            app.ui_state.search.textarea.delete_line_by_head();
                             Ok(false)
                         }
                         KeyCode::Up => {
@@ -209,10 +209,10 @@ impl Navigable for WorkspacePane {
                         }
                         // KeyCode::Char('r') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
                         //     app.mode = Mode::Search;
-                        //     app.search.open = true;
-                        //     app.search.replace_mode = true;
-                        //     app.search.textarea.move_cursor(tui_textarea::CursorMove::End);
-                        //     app.search.textarea.delete_line_by_head();
+                        //     app.ui_state.search.open = true;
+                        //     app.ui_state.search.replace_mode = true;
+                        //     app.ui_state.search.textarea.move_cursor(tui_textarea::CursorMove::End);
+                        //     app.ui_state.search.textarea.delete_line_by_head();
                         //     Ok(false)
                         // }
                         _ => Ok(false)
@@ -224,35 +224,35 @@ impl Navigable for WorkspacePane {
                 let input = tui_textarea::Input::from(key_event);
                 match input {
                     tui_textarea::Input { key: tui_textarea::Key::Esc, .. } => {
-                        app.search.open = false;
+                        app.ui_state.search.open = false;
                         app.mode = Mode::Normal;
-                        app.workspace.set_search_pattern("")?;
+                        app.ui_state.workspace.set_search_pattern("")?;
                         Ok(false)
                     }
                     tui_textarea::Input { key: tui_textarea::Key::Enter, .. } => {
-                        if app.search.replace_mode {
-                            let pattern = app.search.textarea.lines()[0].as_str();
-                            let replacement = app.search.textarea.lines().get(1)
+                        if app.ui_state.search.replace_mode {
+                            let pattern = app.ui_state.search.textarea.lines()[0].as_str();
+                            let replacement = app.ui_state.search.textarea.lines().get(1)
                                                  .map(|s| s.as_str()).unwrap_or("");
-                            app.workspace.set_search_pattern(pattern)?;
+                            app.ui_state.workspace.set_search_pattern(pattern)?;
                             if key_event.modifiers.contains(KeyModifiers::CONTROL) {
-                                let count = app.workspace.replace_all(replacement);
-                                app.message = format!("Replaced {} occurrences", count);
+                                let count = app.ui_state.workspace.replace_all(replacement);
+                                app.ui_state.message = format!("Replaced {} occurrences", count);
                             } else {
-                                if app.workspace.replace_next(replacement) {
-                                    app.message = "Replaced occurrence".to_string();
+                                if app.ui_state.workspace.replace_next(replacement) {
+                                    app.ui_state.message = "Replaced occurrence".to_string();
                                 } else {
-                                    app.message = "No more matches".to_string();
+                                    app.ui_state.message = "No more matches".to_string();
                                 }
                             }
                         } else {
-                            let pattern = app.search.textarea.lines()[0].as_str();
-                            app.workspace.set_search_pattern(pattern)?;
-                            if !app.workspace.search_forward(true) {
-                                app.message = "Pattern not found".to_string();
+                            let pattern = app.ui_state.search.textarea.lines()[0].as_str();
+                            app.ui_state.workspace.set_search_pattern(pattern)?;
+                            if !app.ui_state.workspace.search_forward(true) {
+                                app.ui_state.message = "Pattern not found".to_string();
                             }
                         }
-                        app.search.open = false;
+                        app.ui_state.search.open = false;
                         app.mode = Mode::Normal;
                         Ok(false)
                     }
@@ -261,8 +261,8 @@ impl Navigable for WorkspacePane {
                         ctrl: true,
                         ..
                     } => {
-                        if !app.workspace.search_forward(false) {
-                            app.message = "Pattern not found".to_string();
+                        if !app.ui_state.workspace.search_forward(false) {
+                            app.ui_state.message = "Pattern not found".to_string();
                         }
                         Ok(false)
                     }
@@ -271,15 +271,15 @@ impl Navigable for WorkspacePane {
                         ctrl: true,
                         ..
                     } => {
-                        if !app.workspace.search_back(false) {
-                            app.message = "Pattern not found".to_string();
+                        if !app.ui_state.workspace.search_back(false) {
+                            app.ui_state.message = "Pattern not found".to_string();
                         }
                         Ok(false)
                     }
                     _ => {
-                        app.search.textarea.input(input);
-                        if let Some(pattern) = app.search.textarea.lines().first() {
-                            app.workspace.set_search_pattern(pattern)?;
+                        app.ui_state.search.textarea.input(input);
+                        if let Some(pattern) = app.ui_state.search.textarea.lines().first() {
+                            app.ui_state.workspace.set_search_pattern(pattern)?;
                         }
                         Ok(false)
                     }
