@@ -74,7 +74,7 @@ impl HeaderPane {
             .split(area);
     
         frame.render_widget(
-            Button::new("Run Query").theme(BLUE), // .state(self.connect_button_state), 
+            Button::new("Run Query").theme(BLUE),
             horizontal[1]
         );
     }

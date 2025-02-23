@@ -21,11 +21,8 @@ pub trait ModalHandler: Any {
 
 #[derive(Debug, PartialEq)]
 pub enum ModalAction {
-    /// No action needed
     None,
-    /// Close the modal
     Close,
-    /// Custom action with a string identifier
     Custom(String),
 }
 
@@ -62,7 +59,6 @@ pub struct ModalDialog<'a, W> {
     content: DialogContent<'a, W>,
     width_percent: u16,
     height_percent: u16,
-    modal_area: Option<Rect>,
 }
 
 impl<'a, W> ModalDialog<'a, W> 
@@ -74,7 +70,6 @@ where
             content,
             width_percent: 40,
             height_percent: 35,
-            modal_area: None,
         }
     }
 
@@ -84,22 +79,61 @@ where
         self
     }
 
-    pub fn handle_mouse_event(&self, mouse_event: MouseEvent, _area: Rect) -> Result<ModalAction> {
+    pub fn get_layout(&self, area: Rect) -> (Rect, Vec<(Rect, String)>) {
+        let modal_area = centered_rect(self.width_percent, self.height_percent, area);
+        
+        let inner_area = Block::default()
+            .title(self.content.title)
+            .title_alignment(Alignment::Center)
+            .borders(Borders::ALL)
+            .inner(modal_area);
+
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .margin(1)
+            .constraints([
+                Constraint::Min(3),    // Content area
+                Constraint::Length(3), // Buttons
+            ])
+            .split(inner_area);
+
+        let button_constraints: Vec<Constraint> = std::iter::once(Constraint::Percentage((100 - self.content.buttons.len() as u16 * 20) / 2))
+            .chain(self.content.buttons.iter().flat_map(|_| {
+                vec![
+                    Constraint::Length(12),  // Button width
+                    Constraint::Length(2),   // Gap between buttons
+                ]
+            }))
+            .chain(std::iter::once(Constraint::Percentage((100 - self.content.buttons.len() as u16 * 20) / 2)))
+            .collect();
+        
+        let button_layout = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints(button_constraints)
+            .split(chunks[1]);
+
+        let mut button_areas = Vec::new();
+        for (i, button) in self.content.buttons.iter().enumerate() {
+            let button_area = button_layout[i * 2 + 1];
+            button_areas.push((button_area, button.action.clone()));
+        }
+
+        (modal_area, button_areas)
+    }
+
+    pub fn handle_mouse_event(&self, mouse_event: MouseEvent, area: Rect) -> Result<ModalAction> {
         match mouse_event.kind {
             MouseEventKind::Down(MouseButton::Left) => {
                 let position = Position::new(mouse_event.column, mouse_event.row);
+                let (modal_area, button_areas) = self.get_layout(area);
                 
-                if let Some(modal_area) = self.modal_area {
-                    if !modal_area.contains(position) {
-                        return Ok(ModalAction::Close);
-                    }
+                if !modal_area.contains(position) {
+                    return Ok(ModalAction::Close);
                 }
                 
-                for button in &self.content.buttons {
-                    if let Some(button_rect) = button.rect {
-                        if button_rect.contains(position) {
-                            return Ok(ModalAction::Custom(button.action.clone()));
-                        }
+                for (button_rect, action) in button_areas {
+                    if button_rect.contains(position) {
+                        return Ok(ModalAction::Custom(action));
                     }
                 }
             }
@@ -122,11 +156,10 @@ impl<'a, W> Widget for ModalDialog<'a, W>
 where
     W: Widget,
 {
-    fn render(mut self, area: Rect, buf: &mut Buffer) {
+    fn render(self, area: Rect, buf: &mut Buffer) {
         buf.set_style(area, Style::default().bg(Color::Black).fg(Color::Gray));
         
-        let modal_area = centered_rect(self.width_percent, self.height_percent, area);
-        self.modal_area = Some(modal_area);
+        let (modal_area, button_areas) = self.get_layout(area);
         
         let block = Block::default()
             .title(self.content.title)
@@ -164,9 +197,8 @@ where
             .constraints(button_constraints)
             .split(chunks[1]);
             
-        for (i, button) in self.content.buttons.iter_mut().enumerate() {
+        for ((i, button), (_, _)) in self.content.buttons.iter().enumerate().zip(button_areas.iter()) {
             let button_area = button_layout[i * 2 + 1];
-            button.rect = Some(button_area);
             Button::new(button.label)
                 .theme(button.theme)
                 .render(button_area, buf);

@@ -282,7 +282,6 @@ impl<'a> App<'a> {
                 ModalAction::None => return Ok(false),
             }
         }
-
         ui.handle_mouse_event(self, mouse_event)
     }
 
