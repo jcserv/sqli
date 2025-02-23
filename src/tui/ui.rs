@@ -1,6 +1,7 @@
 use anyhow::Result;
 use crossterm::event::{KeyEvent, MouseEvent};
 use ratatui::{
+    prelude::*,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::Line,
@@ -41,17 +42,29 @@ impl UI {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(4),     
+                Constraint::Length(1),     // App title bar
+                Constraint::Length(3),     
                 Constraint::Min(0),        
                 Constraint::Length(3),     // Instructions area  
                 Constraint::Length(1),     // Status message area
             ])
             .split(frame.area());
 
-        let top_bar = chunks[0];
-        let main_area = chunks[1];
-        let instructions_area = chunks[2];
-        let status_area = chunks[3];
+        let app_info_line = Line::from(vec![
+            " sqli ".white().bold(),
+            "v0.1.0".dark_gray().into(),
+        ]);
+
+        let app_info = chunks[0];
+        let top_bar = chunks[1];
+        let main_area = chunks[2];
+        let instructions_area = chunks[3];
+        let status_area = chunks[4];
+
+        frame.render_widget(
+            Paragraph::new(app_info_line).style(Style::default()),
+            app_info
+        );
 
         self.header_pane.render(app, frame, top_bar);
 

@@ -65,25 +65,13 @@ impl Pane for HeaderPane {
         "Connection"
     }
 
-    // TODO: Fix the layout
     fn render_content(&mut self, app: &mut App, frame: &mut Frame, area: Rect) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(1),    // App title bar
                 Constraint::Min(1),       // Connection area
             ])
             .split(area);
-        
-        let app_info_line = Line::from(vec![
-            " sqli ".white().bold(),
-            "v0.1.0".dark_gray().into(),
-        ]);
-        
-        frame.render_widget(
-            Paragraph::new(app_info_line).style(Style::default()),
-            chunks[0]
-        );
 
         let is_editing = app.is_pane_in_edit_mode(self.pane_id());
         let prefix = if is_editing { "◀ " } else { "" };
@@ -104,10 +92,10 @@ impl Pane for HeaderPane {
             Paragraph::new(connection_name)
                 .style(connection_style)
                 .alignment(Alignment::Left),
-            chunks[1]
+            chunks[0]
         );
 
-        self.render_connection_button(frame, chunks[1]);
+        self.render_connection_button(frame, chunks[0]);
     }
 
     fn get_custom_instructions(&self, _app: &App, is_editing: bool) -> Line<'static> {
