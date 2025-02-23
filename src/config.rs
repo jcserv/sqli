@@ -1,8 +1,9 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 
-use crate::{file, sql::interface::{get_sql_type, SQLType}};
+use crate::{collection::CollectionScope, file::FileSystem, sql::interface::{get_sql_type, SQLType}};
+
+pub const CONFIG_FILE_NAME: &str = "config.yaml";
 
 pub async fn run_config_set(config_manager: &mut ConfigManager, name: String, conn: String, 
     host: String, port: u16, database: String, user: String, password: Option<String>) -> Result<()> {
@@ -89,34 +90,28 @@ impl Connection {
 }
 
 pub struct ConfigManager {
-    config_dir: PathBuf,
+    fs: FileSystem,
 }
 
 impl ConfigManager {
     pub fn new() -> Result<Self> {
-        let config_dir = file::get_config_dir()?;
-        Ok(Self { config_dir })
+        Ok(Self {
+            fs: FileSystem::new()?,
+        })
     }
 
     pub fn load_config(&self) -> Result<Config> {
-        let config_path = self.config_dir.join("config.yaml");
+        let config_path = self.fs.get_scoped_path(CollectionScope::User, CONFIG_FILE_NAME)?;
         if !config_path.exists() {
             return Ok(Config { connections: Vec::new() });
         }
 
-        file::load_yaml_config::<Config>(&config_path)
+        self.fs.load_yaml_config::<Config>(&config_path)
     }
 
     pub fn save_config(&self, config: &Config) -> Result<()> {
-        let config_path = self.config_dir.join("config.yaml");
-        
-        let config_to_save = Config {
-            connections: config.connections.iter().map(|conn| {
-                    conn.clone()
-            }).collect(),
-        };
-
-        file::save_yaml_config(&config_path, &config_to_save)
+        let config_path = self.fs.get_scoped_path(CollectionScope::User, CONFIG_FILE_NAME)?;
+        self.fs.save_yaml_config(&config_path, &config)
     }
 
     pub fn add_connection(&mut self, connection: Connection) -> Result<()> {

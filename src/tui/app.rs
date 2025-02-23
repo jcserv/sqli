@@ -8,9 +8,8 @@ use tui_textarea::TextArea;
 use tui_tree_widget::{TreeItem, TreeState};
 
 use crate::collection::{CollectionScope, SelectedFile};
-use crate::config::ConfigManager;
-use crate::file::{self, parse_selected_file};
-use crate::file_operations::{create_file_or_folder, rename_file_or_folder};
+use crate::config::{ConfigManager, CONFIG_FILE_NAME};
+use crate::file::{self, parse_selected_file, FileSystem};
 use crate::query::{self, execute_query};
 use crate::sql::interface::QueryResult;
 
@@ -329,7 +328,7 @@ impl<'a> App<'a> {
             return;
         }
 
-        let selected_file = match parse_selected_file(&selected) {
+        let selected_file = match file::parse_selected_file(&selected) {
             Some(file) => file,
             None => {
                 self.ui_state.message = "Invalid selection".to_string();
@@ -337,7 +336,7 @@ impl<'a> App<'a> {
             }
         };
 
-        match file::save_file(&selected_file, &content) {
+        match FileSystem::new().and_then(|fs| fs.save_file(&selected_file, &content)) {
             Ok(_) => {
                 self.ui_state.message = "File saved successfully".to_string();
             },
@@ -361,7 +360,7 @@ impl<'a> App<'a> {
                 },
                 AppCommand::CreateFile => {
                     if let Some(FileOperationState::Create { name, is_folder, scope }) = &self.file_operation_state {
-                        match create_file_or_folder(name, *is_folder, *scope) {
+                        match FileSystem::new().and_then(|fs| fs.create_file_or_folder(name, *is_folder, *scope)) {
                             Ok(_) => {
                                 self.ui_state.message = format!("{} created successfully", 
                                     if *is_folder { "Folder" } else { "File" });
@@ -377,12 +376,12 @@ impl<'a> App<'a> {
                 AppCommand::EditFile => {
                     if let Some(FileOperationState::Edit { name, scope }) = &self.file_operation_state {
                         if let Some(old_info) = self.get_selected_file_info() {
-                            match rename_file_or_folder(
+                            match FileSystem::new().and_then(|fs| fs.rename_file_or_folder(
                                 &old_info.name, 
                                 name, 
                                 old_info.scope,
                                 *scope
-                            ) {
+                            )) {
                                 Ok(_) => {
                                     self.ui_state.message = "File/folder updated successfully".to_string();
                                     self.reload_collections();
@@ -568,7 +567,7 @@ impl<'a> App<'a> {
         if let Some(file) = parse_selected_file(&selected) {
             match file {
                 SelectedFile::Config(scope) => Some(SelectedFileInfo {
-                    name: "config.yaml".to_string(),
+                    name: CONFIG_FILE_NAME.to_string(),
                     is_folder: false,
                     scope,
                 }),

@@ -9,7 +9,7 @@ use ratatui::{
     widgets::{Block, Borders, Scrollbar, ScrollbarOrientation},
 };
 
-use crate::{collection::{build_collection_tree, load_collections, SelectedFile}, file::{load_config_content, load_sql_with_scope, parse_selected_file}, tui::widgets::file_tree::FileTree};
+use crate::{collection::{build_collection_tree, load_collections, SelectedFile}, config::CONFIG_FILE_NAME, file::{self, FileSystem}, tui::widgets::file_tree::FileTree};
 use crate::tui::app::{App, Mode};
 use crate::tui::navigation::{Navigable, PaneId, FocusType};
 use super::traits::Instructions;
@@ -81,15 +81,19 @@ impl CollectionsPane {
             return Ok(());
         }
 
-        let file = match parse_selected_file(&selected) {
+        let fs = FileSystem::new()?;
+        let file = match file::parse_selected_file(&selected) {
             Some(file) => file,
             None => return Ok(())
         };
 
         let result = match file {
-            SelectedFile::Config(scope) => load_config_content(scope),
+            SelectedFile::Config(scope) => {
+                let config_path = fs.get_scoped_path(scope, CONFIG_FILE_NAME)?;
+                fs.read_file(config_path)
+            },
             SelectedFile::Sql { collection, filename, scope } => {
-                load_sql_with_scope(&collection, &filename, scope)
+                fs.load_sql(&collection, &filename, scope)
             }
         };
 

@@ -2,9 +2,7 @@ use anyhow::Result;
 use std::collections::HashMap;
 use tui_tree_widget::TreeItem;
 
-use crate::file::{get_scoped_path, load_collections_from_dir};
-
-const CONFIG_FILE_NAME: &str = "config.yaml";
+use crate::file::FileSystem;
 
 #[derive(Debug)]
 pub enum SelectedFile {
@@ -38,18 +36,17 @@ pub struct Collection {
 }
 
 pub fn load_collections() -> Result<Vec<Collection>> {
+    let fs = FileSystem::new()?;
     let mut collections = Vec::new();
     
-    if let Ok(user_dir) = get_scoped_path(CollectionScope::User, "") {
-        if user_dir.exists() {
-            load_collections_from_dir(&user_dir, &mut collections, CollectionScope::User)?;
-        }
+    let user_dir = fs.get_scoped_path(CollectionScope::User, "")?;
+    if user_dir.exists() {
+        fs.load_collections_from_dir(&user_dir, &mut collections, CollectionScope::User)?;
     }
     
-    if let Ok(local_dir) = get_scoped_path(CollectionScope::Cwd, "") {
-        if local_dir.exists() {
-            load_collections_from_dir(&local_dir, &mut collections, CollectionScope::Cwd)?;
-        }
+    let local_dir = fs.get_scoped_path(CollectionScope::Cwd, "")?;
+    if local_dir.exists() {
+        fs.load_collections_from_dir(&local_dir, &mut collections, CollectionScope::Cwd)?;
     }
     
     Ok(collections)
@@ -65,11 +62,15 @@ pub fn collections_to_hashmap(collections: &[Collection]) -> HashMap<String, Vec
 
 pub fn build_collection_tree<'a>(collections: &[Collection]) -> Vec<TreeItem<'a, String>> {
     let mut tree_items = Vec::new();
+    let fs = match FileSystem::new() {
+        Ok(fs) => fs,
+        Err(_) => return Vec::new(),
+    };
 
     for scope in [CollectionScope::User, CollectionScope::Cwd] {
-        if let Ok(config_path) = get_scoped_path(scope.clone(), CONFIG_FILE_NAME) {
+        if let Ok(config_path) = fs.get_scoped_path(scope, "config.yaml") {
             if config_path.exists() {
-                let config_name = format!("{} {}", CONFIG_FILE_NAME, scope.as_str());
+                let config_name = format!("{} {}", "config.yaml", scope.as_str());
                 tree_items.push(TreeItem::new_leaf(config_name.clone(), config_name));
             }
         }

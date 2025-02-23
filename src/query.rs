@@ -3,7 +3,7 @@ use std::path::Path;
 
 use crate::{
     config::{ConfigManager, Connection},
-    file,
+    file::FileSystem,
     sql::{factory::create_executor, interface::{Executor, QueryResult}},
 };
 
@@ -48,7 +48,8 @@ pub async fn execute_query(
 ) -> Result<QueryResult> {
     let connection_url = get_connection_url(url, connection, password)?;
     let sql_content = if Path::new(&sql).exists() && sql.ends_with(".sql") {
-        file::read_file_to_string(&sql)?
+        let fs = FileSystem::new()?;
+        fs.read_file(&sql)?
     } else {
         sql
     };
