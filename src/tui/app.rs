@@ -533,6 +533,7 @@ impl<'a> App<'a> {
                 scope,
             });
         }
+        self.close_modal();
     }
 
     fn handle_edit(&mut self) {
@@ -551,6 +552,7 @@ impl<'a> App<'a> {
                 scope,
             });
         }
+        self.close_modal();
     }
 
     fn show_password_prompt(&mut self) {

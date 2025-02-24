@@ -121,7 +121,7 @@ impl ModalHandler for EditFileModal {
 
     fn handle_key_event(&mut self, key_event: KeyEvent) -> Result<ModalAction> {
         match key_event.code {
-            KeyCode::Enter => Ok(ModalAction::Custom("submit".to_string())),
+            KeyCode::Enter => Ok(ModalAction::Custom("edit".to_string())),
             KeyCode::Esc => Ok(ModalAction::Close),
             KeyCode::Tab => {
                 if self.is_folder {
@@ -157,7 +157,7 @@ impl ModalHandler for EditFileModal {
             content_widget,
             buttons: vec![
                 DialogButton::new("Cancel", "cancel").with_theme(RED),
-                DialogButton::new("Save", "submit").with_theme(GREEN),
+                DialogButton::new("Save", "edit").with_theme(GREEN),
             ],
         };
 
