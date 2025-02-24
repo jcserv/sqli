@@ -106,6 +106,7 @@ pub struct QueryState {
 #[derive(Debug)]
 pub struct SelectedFileInfo {
     pub name: String,
+    pub collection_name: Option<String>,
     pub is_folder: bool,
     pub scope: CollectionScope,
 }
@@ -376,9 +377,24 @@ impl<'a> App<'a> {
                 AppCommand::EditFile => {
                     if let Some(FileOperationState::Edit { name, scope }) = &self.file_operation_state {
                         if let Some(old_info) = self.get_selected_file_info() {
+                            let old_path = match &old_info.collection_name {
+                                Some(collection) => format!("{}/{}", collection, old_info.name),
+                                None => old_info.name.clone()
+                            };
+                            
+                            let new_path = if old_info.is_folder {
+                                name.clone()
+                            } else {
+                                if let Some(collection) = old_info.collection_name {
+                                    format!("{}/{}", collection, name)
+                                } else {
+                                    name.clone()
+                                }
+                            };
+    
                             match FileSystem::new().and_then(|fs| fs.rename_file_or_folder(
-                                &old_info.name, 
-                                name, 
+                                &old_path,
+                                &new_path,
                                 old_info.scope,
                                 *scope
                             )) {
@@ -579,19 +595,21 @@ impl<'a> App<'a> {
         if selected.is_empty() {
             return None;
         }
-
+    
         if let Some(file) = parse_selected_file(&selected) {
             match file {
                 SelectedFile::Config(scope) => Some(SelectedFileInfo {
                     name: CONFIG_FILE_NAME.to_string(),
+                    collection_name: None,
                     is_folder: false,
                     scope,
                 }),
                 SelectedFile::Sql { collection, filename, scope } => {
                     let is_folder = filename.is_empty();
-                    let name = if is_folder { collection } else { filename };
+                    let name = if is_folder { collection.clone() } else { filename };
                     Some(SelectedFileInfo {
                         name,
+                        collection_name: if is_folder { None } else { Some(collection) },
                         is_folder,
                         scope,
                     })
