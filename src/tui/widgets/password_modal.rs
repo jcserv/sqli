@@ -4,7 +4,7 @@ use ratatui::{layout::Rect, style::{Color, Style}, widgets::{Block, Borders}, Fr
 use std::any::Any;
 use tui_textarea::TextArea;
 
-use crate::tui::widgets::button::{RED, GREEN};
+use crate::tui::widgets::button::{LIGHT_GREY, GREEN};
 use super::modal::{DialogButton, DialogContent, ModalAction, ModalDialog, ModalHandler};
 
 pub struct PasswordModal {
@@ -52,7 +52,7 @@ impl ModalHandler for PasswordModal {
             title: "Enter Password",
             content_widget: &self.textarea,
             buttons: vec![
-                DialogButton::new("Cancel", "cancel").with_theme(RED),
+                DialogButton::new("Cancel", "cancel").with_theme(LIGHT_GREY),
                 DialogButton::new("Submit", "submit").with_theme(GREEN),
             ],
         };
@@ -66,7 +66,7 @@ impl ModalHandler for PasswordModal {
             title: "Enter Password",
             content_widget: &self.textarea,
             buttons: vec![
-                DialogButton::new("Cancel", "cancel").with_theme(RED),
+                DialogButton::new("Cancel", "cancel").with_theme(LIGHT_GREY),
                 DialogButton::new("Submit", "submit").with_theme(GREEN),
             ],
         };

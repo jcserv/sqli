@@ -12,7 +12,7 @@ use std::any::Any;
 use crate::{
     collection::CollectionScope,
     tui::widgets::{
-        button::{RED, GREEN},
+        button::{LIGHT_GREY, GREEN},
         modal::{DialogButton, DialogContent, ModalAction, ModalDialog, ModalHandler},
         radio_group::{RadioGroup, RadioOption},
     },
@@ -141,7 +141,7 @@ impl ModalHandler for NewFileModal {
             title: "New File/Folder",
             content_widget,
             buttons: vec![
-                DialogButton::new("Cancel", "cancel").with_theme(RED),
+                DialogButton::new("Cancel", "cancel").with_theme(LIGHT_GREY),
                 DialogButton::new("Save", "new").with_theme(GREEN),
             ],
         };
@@ -163,7 +163,7 @@ impl ModalHandler for NewFileModal {
             title: "New File/Folder",
             content_widget,
             buttons: vec![
-                DialogButton::new("Cancel", "cancel").with_theme(RED),
+                DialogButton::new("Cancel", "cancel").with_theme(LIGHT_GREY),
                 DialogButton::new("Create", "submit").with_theme(GREEN),
             ],
         };
