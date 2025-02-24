@@ -490,28 +490,30 @@ impl<'a> App<'a> {
     }
 
     fn handle_modal_mouse_event(&mut self, mouse_event: MouseEvent, area: Rect) -> Result<()> {
-        match self.modal_manager.handle_event(ModalEvent::Mouse(mouse_event, area))? {
-            ModalAction::Close => {
-                self.close_modal();
-            }
-            ModalAction::Custom(action) => {
-                match action.as_str() {
-                    "new" => {
-                        self.handle_new();
-                    }
-                    "edit" => {
-                        self.handle_edit();
-                    }
-                    "submit" => {
-                        self.handle_submit();
-                    }
-                    "cancel" => {
-                        self.close_modal();
-                    }
-                    _ => {}
+        if let Some(modal) = self.modal_manager.get_modal_mut() {
+            match modal.handle_mouse_event(mouse_event, area)? {
+                ModalAction::Close => {
+                    self.close_modal();
                 }
+                ModalAction::Custom(action) => {
+                    match action.as_str() {
+                        "new" => {
+                            self.handle_new();
+                        }
+                        "edit" => {
+                            self.handle_edit();
+                        }
+                        "submit" => {
+                            self.handle_submit();
+                        }
+                        "cancel" => {
+                            self.close_modal();
+                        }
+                        _ => {}
+                    }
+                }
+                ModalAction::None => {}
             }
-            ModalAction::None => {}
         }
         Ok(())
     }

@@ -57,7 +57,7 @@ impl ModalHandler for PasswordModal {
             ],
         };
 
-        let dialog = ModalDialog::new(content);
+        let mut dialog = ModalDialog::new(content);
         dialog.handle_mouse_event(mouse_event, area)
     }
 

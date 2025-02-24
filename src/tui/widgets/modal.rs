@@ -14,8 +14,8 @@ use super::button::{Button, Theme};
 
 #[derive(Debug, Clone)]
 pub struct DialogButton<'a> {
-    button: Button<'a>,
-    action: String,
+    pub button: Button<'a>,
+    pub action: String,
 }
 
 impl<'a> DialogButton<'a> {
@@ -40,11 +40,9 @@ impl<'a> DialogButton<'a> {
     }
 }
 
-impl<'a> Widget for &DialogButton<'a> {
+impl<'a> Widget for DialogButton<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let mut button = self.button.clone();
-        button.set_area(area);
-        button.render(area, buf);
+        self.button.render(area, buf)
     }
 }
 
@@ -58,6 +56,7 @@ pub struct ModalDialog<'a, W> {
     content: DialogContent<'a, W>,
     width_percent: u16,
     height_percent: u16,
+    buttons: Vec<DialogButton<'a>>,
 }
 
 impl<'a, W> ModalDialog<'a, W> 
@@ -66,7 +65,12 @@ where
 {
     pub fn new(content: DialogContent<'a, W>) -> Self {
         Self {
-            content,
+            buttons: content.buttons,
+            content: DialogContent {
+                title: content.title,
+                content_widget: content.content_widget,
+                buttons: Vec::new(),
+            },
             width_percent: 40,
             height_percent: 35,
         }
@@ -78,7 +82,43 @@ where
         self
     }
 
-    pub fn get_layout(&self, area: Rect) -> (Rect, Vec<(Rect, String)>) {
+    pub fn handle_mouse_event(&mut self, mouse_event: MouseEvent, area: Rect) -> Result<ModalAction> {
+        match mouse_event.kind {
+            MouseEventKind::Down(MouseButton::Left) => {
+                let position = Position::new(mouse_event.column, mouse_event.row);
+                let (modal_area, button_areas) = self.get_layout(area);
+                
+                if !modal_area.contains(position) {
+                    
+                    return Ok(ModalAction::Close);
+                }
+                
+                for (i, button) in self.buttons.iter_mut().enumerate() {
+                    let (button_rect, _) = &button_areas[i];
+                    button.set_area(*button_rect);
+                    if button_rect.contains(position) {
+                        return Ok(ModalAction::Custom(button.action.clone()));
+                    }
+                }
+            }
+            MouseEventKind::Moved => {
+                let (_, button_areas) = self.get_layout(area);
+                for (button, (button_rect, _)) in self.buttons.iter_mut().zip(button_areas.iter()) {
+                    button.set_area(*button_rect);
+                    button.handle_mouse_event(mouse_event);
+                }
+            }
+            MouseEventKind::Up(_) => {
+                for button in &mut self.buttons {
+                    button.handle_mouse_event(mouse_event);
+                }
+            }
+            _ => {}
+        }
+        Ok(ModalAction::None)
+    }
+
+    fn get_layout(&self, area: Rect) -> (Rect, Vec<(Rect, String)>) {
         let modal_area = centered_rect(self.width_percent, self.height_percent, area);
         
         let inner_area = Block::default()
@@ -98,13 +138,13 @@ where
 
         let button_width = 12;
         let gap_width = 2;
-        let total_button_width = (button_width + gap_width) * self.content.buttons.len() as u16;
+        let total_button_width = (button_width + gap_width) * self.buttons.len() as u16;
         
         let left_margin = (chunks[1].width.saturating_sub(total_button_width)) / 2;
         let mut button_areas = Vec::new();
         let mut current_x = chunks[1].x + left_margin;
 
-        for button in &self.content.buttons {
+        for button in &self.buttons {
             let button_area = Rect::new(
                 current_x,
                 chunks[1].y,
@@ -116,36 +156,6 @@ where
         }
 
         (modal_area, button_areas)
-    }
-
-    pub fn handle_mouse_event(&self, mouse_event: MouseEvent, area: Rect) -> Result<ModalAction> {
-        match mouse_event.kind {
-            MouseEventKind::Down(MouseButton::Left) => {
-                let position = Position::new(mouse_event.column, mouse_event.row);
-                let (modal_area, button_areas) = self.get_layout(area);
-                
-                if !modal_area.contains(position) {
-                    return Ok(ModalAction::Close);
-                }
-                
-                for (button_rect, action) in button_areas {
-                    if button_rect.contains(position) {
-                        return Ok(ModalAction::Custom(action));
-                    }
-                }
-            }
-            _ => {}
-        }
-        Ok(ModalAction::None)
-    }
-
-    pub fn handle_key_event(&self, key_event: KeyEvent) -> Result<ModalAction> {
-        use crossterm::event::KeyCode;
-        
-        match key_event.code {
-            KeyCode::Esc => Ok(ModalAction::Close),
-            _ => Ok(ModalAction::None),
-        }
     }
 }
 
@@ -179,14 +189,14 @@ where
             
         self.content.content_widget.render(chunks[0], buf);
         
-        let button_constraints: Vec<Constraint> = std::iter::once(Constraint::Percentage((100 - self.content.buttons.len() as u16 * 20) / 2))
-            .chain(self.content.buttons.iter().flat_map(|_| {
+        let button_constraints: Vec<Constraint> = std::iter::once(Constraint::Percentage((100 - self.buttons.len() as u16 * 20) / 2))
+            .chain(self.buttons.iter().flat_map(|_| {
                 vec![
                     Constraint::Length(12),  // Button width
                     Constraint::Length(2),   // Gap between buttons
                 ]
             }))
-            .chain(std::iter::once(Constraint::Percentage((100 - self.content.buttons.len() as u16 * 20) / 2)))
+            .chain(std::iter::once(Constraint::Percentage((100 - self.buttons.len() as u16 * 20) / 2)))
             .collect();
 
         let button_layout = Layout::default()
@@ -194,9 +204,9 @@ where
             .constraints(button_constraints)
             .split(chunks[1]);
             
-        for (i, button) in self.content.buttons.into_iter().enumerate() {
+        for (i, button) in self.buttons.into_iter().enumerate() {
             let button_area = button_layout[i * 2 + 1];
-            Widget::render(&button, button_area, buf);
+            button.render(button_area, buf);
         }
     }
 }

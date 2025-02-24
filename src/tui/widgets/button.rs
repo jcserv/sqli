@@ -179,6 +179,7 @@ impl Widget for Button<'_> {
                 Style::new().fg(shadow).bg(background),
             );
         }
+
         buf.set_line(
             area.x + (area.width.saturating_sub(self.label.width() as u16)) / 2,
             area.y + (area.height.saturating_sub(1)) / 2,
