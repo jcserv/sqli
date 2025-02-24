@@ -10,40 +10,41 @@ use ratatui::{
     Frame,
 };
 
-use super::button::{Button, Theme, BLUE};
+use super::button::{Button, Theme};
 
-pub trait ModalHandler: Any {
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-    fn handle_key_event(&mut self, key_event: KeyEvent) -> Result<ModalAction>;    
-    fn handle_mouse_event(&mut self, mouse_event: MouseEvent, area: Rect) -> Result<ModalAction>;
-    fn render(&mut self, frame: &mut Frame, area: Rect);
-}
-
-#[derive(Debug, PartialEq)]
-pub enum ModalAction {
-    None,
-    Close,
-    Custom(String),
-}
-
+#[derive(Debug, Clone)]
 pub struct DialogButton<'a> {
-    pub label: &'a str,
-    pub theme: Theme,
-    pub action: String,
+    button: Button<'a>,
+    action: String,
 }
 
 impl<'a> DialogButton<'a> {
     pub fn new(label: &'a str, action: impl Into<String>) -> Self {
         Self {
-            label,
-            theme: BLUE,
+            button: Button::new(label),
             action: action.into(),
         }
     }
 
     pub fn with_theme(mut self, theme: Theme) -> Self {
-        self.theme = theme;
+        self.button = self.button.theme(theme);
         self
+    }
+
+    pub fn handle_mouse_event(&mut self, mouse_event: MouseEvent) -> bool {
+        self.button.handle_mouse_event(mouse_event)
+    }
+
+    pub fn set_area(&mut self, area: Rect) {
+        self.button.set_area(area);
+    }
+}
+
+impl<'a> Widget for &DialogButton<'a> {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let mut button = self.button.clone();
+        button.set_area(area);
+        button.render(area, buf);
     }
 }
 
@@ -155,7 +156,7 @@ where
     fn render(self, area: Rect, buf: &mut Buffer) {
         buf.set_style(area, Style::default().bg(Color::Black).fg(Color::Gray));
         
-        let (modal_area, button_areas) = self.get_layout(area);
+        let (modal_area, _button_areas) = self.get_layout(area);
         
         let block = Block::default()
             .title(self.content.title)
@@ -187,19 +188,31 @@ where
             }))
             .chain(std::iter::once(Constraint::Percentage((100 - self.content.buttons.len() as u16 * 20) / 2)))
             .collect();
-        
+
         let button_layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints(button_constraints)
             .split(chunks[1]);
             
-        for ((i, button), (_, _)) in self.content.buttons.iter().enumerate().zip(button_areas.iter()) {
+        for (i, button) in self.content.buttons.into_iter().enumerate() {
             let button_area = button_layout[i * 2 + 1];
-            Button::new(button.label)
-                .theme(button.theme)
-                .render(button_area, buf);
+            Widget::render(&button, button_area, buf);
         }
     }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum ModalAction {
+    None,
+    Close,
+    Custom(String),
+}
+
+pub trait ModalHandler: Any {
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+    fn handle_key_event(&mut self, key_event: KeyEvent) -> Result<ModalAction>;    
+    fn handle_mouse_event(&mut self, mouse_event: MouseEvent, area: Rect) -> Result<ModalAction>;
+    fn render(&mut self, frame: &mut Frame, area: Rect);
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {

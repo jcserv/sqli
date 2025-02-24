@@ -26,14 +26,6 @@ pub struct Theme {
     hover: Color,
 }
 
-#[derive(Debug, Clone)]
-pub struct Button<'a> {
-    label: Line<'a>,
-    theme: Theme,
-    state: State,
-    area: Option<Rect>,
-}
-
 pub const LIGHT_GREY: Theme = Theme {
     text: Color::White,
     background: Color::Rgb(128, 128, 128),
@@ -66,6 +58,14 @@ pub const BLUE: Theme = Theme {
     hover: Color::Rgb(64, 88, 168),
 };
 
+#[derive(Debug, Clone)]
+pub struct Button<'a> {
+    label: Line<'a>,
+    theme: Theme,
+    state: State,
+    area: Option<Rect>,
+}
+
 /// A button with a label that can be themed and supports hover state.
 impl<'a> Button<'a> {
     pub fn new<T: Into<Line<'a>>>(label: T) -> Self {
@@ -80,6 +80,19 @@ impl<'a> Button<'a> {
     pub const fn theme(mut self, theme: Theme) -> Self {
         self.theme = theme;
         self
+    }
+
+    pub fn state(mut self, state: State) -> Self {
+        self.state = state;
+        self
+    }
+
+    pub fn get_state(&self) -> State {
+        self.state
+    }
+
+    pub fn set_state(&mut self, state: State) {
+        self.state = state;
     }
 
     pub fn set_area(&mut self, area: Rect) {
