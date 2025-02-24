@@ -453,12 +453,14 @@ impl<'a> App<'a> {
             }
             ModalAction::Custom(action) => {
                 match action.as_str() {
+                    "new" => {
+                        self.handle_new();
+                    }
+                    "edit" => {
+                        self.handle_edit();
+                    }
                     "submit" => {
-                        if let Some(modal) = self.modal_manager.get_active_modal_as::<PasswordModal>() {
-                            self.query_state.current_password = modal.get_password();
-                            self.execute_query_with_password(self.query_state.current_password.clone());
-                        }
-                        self.close_modal();
+                        self.handle_submit();
                     }
                     "cancel" => {
                         self.close_modal();
@@ -479,49 +481,13 @@ impl<'a> App<'a> {
             ModalAction::Custom(action) => {
                 match action.as_str() {
                     "new" => {
-                        if let Some(modal) = self.modal_manager.get_active_modal_as::<NewFileModal>() {
-                            let (name, file_type, scope) = modal.get_values();
-                            
-                            if name.is_empty() {
-                                self.ui_state.message = "Name cannot be empty".to_string();
-                                return Ok(());
-                            }
-                            if file_type == "file" && !name.ends_with(".sql") {
-                                self.ui_state.message = "File name must end with .sql".to_string();
-                                return Ok(());
-                            }
-                            self.query_state.pending_command = AppCommand::CreateFile;
-                            
-                            self.file_operation_state = Some(FileOperationState::Create {
-                                name,
-                                is_folder: file_type == "folder",
-                                scope,
-                            });
-                        }
+                        self.handle_new();
                     }
                     "edit" => {
-                        if let Some(modal) = self.modal_manager.get_active_modal_as::<EditFileModal>() {
-                            let (name, scope) = modal.get_values();
-                            
-                            if name.is_empty() {
-                                self.ui_state.message = "Name cannot be empty".to_string();
-                                return Ok(());
-                            }
-
-                            self.query_state.pending_command = AppCommand::EditFile;
-                            
-                            self.file_operation_state = Some(FileOperationState::Edit {
-                                name,
-                                scope,
-                            });
-                        }
+                        self.handle_edit();
                     }
                     "submit" => {
-                        if let Some(modal) = self.modal_manager.get_active_modal_as::<PasswordModal>() {
-                            self.query_state.current_password = modal.get_password();
-                            self.execute_query_with_password(self.query_state.current_password.clone());
-                        }
-                        self.close_modal();
+                        self.handle_submit();
                     }
                     "cancel" => {
                         self.close_modal();
@@ -539,17 +505,65 @@ impl<'a> App<'a> {
         self.mode = Mode::Normal;
     }
 
-    pub fn show_password_prompt(&mut self) {
+    fn handle_submit(&mut self) {
+        if let Some(modal) = self.modal_manager.get_active_modal_as::<PasswordModal>() {
+            self.query_state.current_password = modal.get_password();
+            self.execute_query_with_password(self.query_state.current_password.clone());
+        }
+        self.close_modal();
+    }
+
+    fn handle_new(&mut self) {
+        if let Some(modal) = self.modal_manager.get_active_modal_as::<NewFileModal>() {
+            let (name, file_type, scope) = modal.get_values();
+            
+            if name.is_empty() {
+                self.ui_state.message = "Name cannot be empty".to_string();
+                return;
+            }
+            if file_type == "file" && !name.ends_with(".sql") {
+                self.ui_state.message = "File name must end with .sql".to_string();
+                return;
+            }
+            self.query_state.pending_command = AppCommand::CreateFile;
+            
+            self.file_operation_state = Some(FileOperationState::Create {
+                name,
+                is_folder: file_type == "folder",
+                scope,
+            });
+        }
+    }
+
+    fn handle_edit(&mut self) {
+        if let Some(modal) = self.modal_manager.get_active_modal_as::<EditFileModal>() {
+            let (name, scope) = modal.get_values();
+            
+            if name.is_empty() {
+                self.ui_state.message = "Name cannot be empty".to_string();
+                return;
+            }
+
+            self.query_state.pending_command = AppCommand::EditFile;
+            
+            self.file_operation_state = Some(FileOperationState::Edit {
+                name,
+                scope,
+            });
+        }
+    }
+
+    fn show_password_prompt(&mut self) {
         self.modal_manager.show_modal(ModalType::Password);
         self.mode = Mode::Password;
     }
 
-    pub fn show_new_file_modal(&mut self) {
+    fn show_new_file_modal(&mut self) {
         self.modal_manager.show_modal(ModalType::NewFile);
         self.mode = Mode::NewFile;
     }
 
-    pub fn show_edit_file_modal(&mut self, name: String, is_folder: bool, current_scope: CollectionScope) {
+    fn show_edit_file_modal(&mut self, name: String, is_folder: bool, current_scope: CollectionScope) {
         self.modal_manager.show_modal(ModalType::EditFile {
             name,
             is_folder,
