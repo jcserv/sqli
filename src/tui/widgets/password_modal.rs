@@ -71,7 +71,8 @@ impl ModalHandler for PasswordModal {
             ],
         };
 
-        let dialog = ModalDialog::new(content).with_dimensions(40, 25);
+        let dialog = ModalDialog::new(content)
+            .with_dimensions(50, 30);
         frame.render_widget(dialog, area);
     }
 }

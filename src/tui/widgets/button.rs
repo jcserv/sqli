@@ -34,6 +34,14 @@ pub struct Button<'a> {
     area: Option<Rect>,
 }
 
+pub const LIGHT_GREY: Theme = Theme {
+    text: Color::White,
+    background: Color::Rgb(128, 128, 128),
+    highlight: Color::Rgb(192, 192, 192),
+    shadow: Color::Rgb(96, 96, 96),
+    hover: Color::Rgb(168, 168, 168),
+};
+
 pub const RED: Theme = Theme {
     text: Color::White,
     background: Color::Rgb(144, 48, 48),

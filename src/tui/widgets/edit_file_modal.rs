@@ -12,7 +12,7 @@ use std::any::Any;
 use crate::{
     collection::CollectionScope,
     tui::widgets::{
-        button::{RED, GREEN},
+        button::{LIGHT_GREY, GREEN},
         modal::{DialogButton, DialogContent, ModalAction, ModalDialog, ModalHandler},
         radio_group::{RadioGroup, RadioOption},
     },
@@ -25,7 +25,6 @@ struct EditFileContent<'a> {
     focused_element: usize,
 }
 
-/// TODO: Mouse clicks aren't working
 impl EditFileModal {
     pub fn new(name: &str, is_folder: bool, current_scope: CollectionScope) -> Self {
         let mut name_input = tui_textarea::TextArea::default();
@@ -156,7 +155,7 @@ impl ModalHandler for EditFileModal {
             title: if self.is_folder { "Edit Folder" } else { "Edit File" },
             content_widget,
             buttons: vec![
-                DialogButton::new("Cancel", "cancel").with_theme(RED),
+                DialogButton::new("Cancel", "cancel").with_theme(LIGHT_GREY),
                 DialogButton::new("Save", "edit").with_theme(GREEN),
             ],
         };
@@ -178,7 +177,7 @@ impl ModalHandler for EditFileModal {
             title: if self.is_folder { "Edit Folder" } else { "Edit File" },
             content_widget,
             buttons: vec![
-                DialogButton::new("Cancel", "cancel").with_theme(RED),
+                DialogButton::new("Cancel", "cancel").with_theme(LIGHT_GREY),
                 DialogButton::new("Save", "edit").with_theme(GREEN),
             ],
         };

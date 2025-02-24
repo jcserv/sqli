@@ -95,25 +95,23 @@ where
             ])
             .split(inner_area);
 
-        let button_constraints: Vec<Constraint> = std::iter::once(Constraint::Percentage((100 - self.content.buttons.len() as u16 * 20) / 2))
-            .chain(self.content.buttons.iter().flat_map(|_| {
-                vec![
-                    Constraint::Length(8),  // Button width
-                    Constraint::Length(2),   // Gap between buttons
-                ]
-            }))
-            .chain(std::iter::once(Constraint::Percentage((100 - self.content.buttons.len() as u16 * 20) / 2)))
-            .collect();
+        let button_width = 12;
+        let gap_width = 2;
+        let total_button_width = (button_width + gap_width) * self.content.buttons.len() as u16;
         
-        let button_layout = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints(button_constraints)
-            .split(chunks[1]);
-
+        let left_margin = (chunks[1].width.saturating_sub(total_button_width)) / 2;
         let mut button_areas = Vec::new();
-        for (i, button) in self.content.buttons.iter().enumerate() {
-            let button_area = button_layout[i * 2 + 1];
+        let mut current_x = chunks[1].x + left_margin;
+
+        for button in &self.content.buttons {
+            let button_area = Rect::new(
+                current_x,
+                chunks[1].y,
+                button_width,
+                3
+            );
             button_areas.push((button_area, button.action.clone()));
+            current_x += button_width + gap_width;
         }
 
         (modal_area, button_areas)
