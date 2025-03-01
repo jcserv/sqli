@@ -4,9 +4,8 @@
 - [ ] configuring user-level collections
 - [ ] query: when using a sql file with parameters, prompt for values
 
-## bugs
+## known issues
 - [ ] modal buttons don't highlight on hover
-- [ ] clicking on a file in the file tree doesn't load it into the editor
 
 ## nice to have
 
