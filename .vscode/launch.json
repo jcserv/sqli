@@ -1,0 +1,62 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Run CLI",
+      "cargo": {
+        "args": ["build", "--bin=sqli", "--package=sqli"],
+        "filter": {
+          "name": "sqli",
+          "kind": "bin"
+        }
+      },
+      "args": [
+        // Edit these
+        "config",
+        "list"
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Run TUI",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/target/debug/sqli",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "sourceLanguages": ["rust"]
+    },
+    {
+      "name": "Run CLI Tests",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": ["test", "--no-run", "--test=cli"],
+        "filter": {
+          "name": "cli",
+          "kind": "test"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "sourceLanguages": ["rust"]
+    },
+    {
+      "name": "Run TUI Tests",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": ["test", "--no-run", "--test=tui"],
+        "filter": {
+          "name": "tui",
+          "kind": "test"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "sourceLanguages": ["rust"]
+    }
+  ]
+}
