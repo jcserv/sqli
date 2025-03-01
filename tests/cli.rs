@@ -6,29 +6,30 @@ use predicates::prelude::*;
 mod helpers;
 use helpers::{contains_any_of, TestEnv};
 
-// #[test]
-// fn test_config_list_command() {
-//     let env = TestEnv::new();
+#[test]
+fn test_config_list_command() {
+    let env = TestEnv::new();
     
-//     env.create_config(r#"
-// connections:
-//   - name: local
-//     conn: postgresql
-//     host: localhost
-//     port: 5432
-//     database: testdb
-//     user: postgres
-// "#).unwrap();
+    env.create_config(r#"
+connections:
+  - name: local
+    conn: postgresql
+    host: localhost
+    port: 5432
+    database: testdb
+    user: postgres
+"#).unwrap();
 
-//     AssertCommand::cargo_bin("sqli")
-//         .unwrap()
-//         .arg("config")
-//         .arg("list")
-//         .current_dir(&env.temp_dir)
-//         .assert()
-//         .success()
-//         .stdout(predicate::str::contains("local"));
-// }
+    env.setup_test_env();
+    AssertCommand::cargo_bin("sqli")
+        .unwrap()
+        .arg("config")
+        .arg("list")
+        .current_dir(&env.temp_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("local"));
+}
 
 #[test]
 fn test_missing_connection() {

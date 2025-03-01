@@ -2,9 +2,7 @@ use anyhow::{anyhow, Result};
 use std::path::Path;
 
 use crate::{
-    config::{ConfigManager, Connection},
-    file::FileSystem,
-    sql::{factory::create_executor, interface::Executor, result::{format_output, Format, QueryResult}},
+    config::{ConfigManager, Connection}, file::FileSystem, settings::UserSettings, sql::{factory::create_executor, interface::Executor, result::{format_output, Format, QueryResult}}
 };
 
 /// Wrapper function that executes a query and prints results to stdout (for CLI usage)
@@ -57,8 +55,10 @@ pub async fn execute_query(
 }
 
 pub fn get_connection_url(url: Option<String>, connection: Option<String>, password: Option<String>) -> Result<String> {
+    let settings = UserSettings::from_env();
     if let Some(conn_name) = connection {
-        let config_manager = ConfigManager::new()?;
+        let fs = FileSystem::with_paths(settings.user_dir, settings.workspace_dir)?;
+        let config_manager = ConfigManager::with_filesystem(fs);
         let conn = config_manager
             .get_connection(&conn_name)?
             .ok_or_else(|| anyhow!("Connection '{}' not found", conn_name))?;
@@ -72,6 +72,8 @@ pub fn get_connection_url(url: Option<String>, connection: Option<String>, passw
 }
 
 pub fn get_connection(name: &str) -> Result<Option<Connection>> {
-    let config_manager = ConfigManager::new()?;
+    let settings = UserSettings::from_env();
+    let fs = FileSystem::with_paths(settings.user_dir, settings.workspace_dir)?;
+    let config_manager = ConfigManager::with_filesystem(fs);
     config_manager.get_connection(name)
 }

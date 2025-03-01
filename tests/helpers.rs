@@ -4,6 +4,8 @@ use tempfile::TempDir;
 
 pub struct TestEnv {
     pub temp_dir: TempDir,
+    original_config_dir: Option<String>,
+    original_workspace_dir: Option<String>,
 }
 
 impl TestEnv {
@@ -11,7 +13,21 @@ impl TestEnv {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("sqli")).unwrap();        
         std::env::set_current_dir(&temp_dir).unwrap();
-        Self { temp_dir }
+
+        let original_config_dir = std::env::var("SQLI_CONFIG_DIR").ok();
+        let original_workspace_dir = std::env::var("SQLI_WORKSPACE_DIR").ok();
+
+        Self { 
+            temp_dir, 
+            original_config_dir,
+            original_workspace_dir 
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn setup_test_env(&self) {
+        std::env::set_var("SQLI_CONFIG_DIR", self.temp_dir.path().join("sqli").display().to_string());
+        std::env::set_var("SQLI_WORKSPACE_DIR", self.temp_dir.path().join("sqli").display().to_string());
     }
 
     #[allow(dead_code)]
@@ -74,6 +90,20 @@ impl TestEnv {
     #[allow(dead_code)]
     pub fn file_exists(&self, rel_path: &str) -> bool {
         self.temp_dir.path().join(rel_path).exists()
+    }
+}
+
+impl Drop for TestEnv {
+    fn drop(&mut self) {
+        match &self.original_config_dir {
+            Some(val) => std::env::set_var("SQLI_CONFIG_DIR", val),
+            None => std::env::remove_var("SQLI_CONFIG_DIR"),
+        }
+        
+        match &self.original_workspace_dir {
+            Some(val) => std::env::set_var("SQLI_WORKSPACE_DIR", val),
+            None => std::env::remove_var("SQLI_WORKSPACE_DIR"),
+        }
     }
 }
 

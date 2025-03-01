@@ -1,6 +1,8 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use sqli::config::{run_config_set, run_config_list, ConfigManager};
+use sqli::file::FileSystem;
+use sqli::settings::UserSettings;
 use tokio;
 
 use sqli::tui::run::run_tui;
@@ -63,10 +65,11 @@ enum ConfigAction {
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
-    let mut config_manager = ConfigManager::new()?;
+    let settings = UserSettings::from_env();
+    let fs = FileSystem::with_paths(settings.user_dir.clone(), settings.workspace_dir.clone())?;
+    let mut config_manager = ConfigManager::with_filesystem(fs.clone());
 
     match cli.command.unwrap_or(Commands::Tui) {
-        
         Commands::Tui => {
             run_tui(None)?;
         },
@@ -86,4 +89,3 @@ async fn main() -> Result<()> {
     }
     Ok(())
 }
-
