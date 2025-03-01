@@ -1,10 +1,10 @@
 # sqli
 
+![visitors](https://img.shields.io/endpoint?url=https://vu-mi.com/api/v1/views?id=jcserv/sqli) ![downloads](https://img.shields.io/crates/d/sqli)
+
 sqli (as in, "sql" + "cli" = "sqli") is a simple & sleek SQL client, used as a terminal UI or as a command line tool, to help you query your Postgres database!
 
 heavily inspired by tools like [posting](https://github.com/darrenburns/posting), [curl](https://github.com/curl/curl), and [bruno](https://github.com/usebruno/bruno).
-
-![Product demo](docs/demo.gif)
 
 ## features 🚀
 
@@ -15,9 +15,17 @@ heavily inspired by tools like [posting](https://github.com/darrenburns/posting)
 - 📁 collections are stored in your local file system
   - repo-level collections are stored in `./sqli` - add these to your source control to share with others!
   - user-level settings & collections are stored in `<CONFIG_DIR>/sqli`
-- 🦀 written in rust btw 😎  
+- 🦀 written in rust btw 😎
+
+![Product demo](docs/demo.gif)
 
 ## installation 📦
+
+### homebrew
+
+`brew tap jcserv/cask`
+
+`brew install sqli`
 
 ### cargo
 
@@ -26,11 +34,6 @@ heavily inspired by tools like [posting](https://github.com/darrenburns/posting)
 or
 
 `cargo install sqli`
-
-
-### brew
-
-coming soon!
 
 ## usage ⚙️ 
 
