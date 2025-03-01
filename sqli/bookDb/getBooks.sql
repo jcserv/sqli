@@ -1,0 +1,2 @@
+-- hi!
+SELECT * FROM book;
