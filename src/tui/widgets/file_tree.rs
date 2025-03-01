@@ -69,7 +69,7 @@ where
                         state.toggle_selected();
                     }
                     
-                    return Ok(false);
+                    return Ok(true);
                 }
             }
             _ => {}

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crossterm::event::{KeyCode, KeyEvent, MouseEvent};
+use crossterm::event::{KeyCode, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::{
     prelude::*,
     style::{Color, Style},
@@ -176,12 +176,15 @@ impl Pane for CollectionsPane {
     }
 
     fn handle_custom_mouse_event(&mut self, app: &mut App, mouse_event: MouseEvent) -> Result<bool> {
-        if let Some(area) = self.last_area {
-            let tree = FileTree::new(&app.ui_state.collection_items).expect("all item identifiers are unique");
-            if tree.handle_mouse_event(&mut app.ui_state.collection_state, mouse_event, area)? {
-                app.navigation.start_editing(PaneId::Collections)?;
-                self.handle_selection(app)?;
-                return Ok(false);
+        if let MouseEventKind::Down(MouseButton::Left) = mouse_event.kind {
+            if let Some(area) = self.last_area {
+                let tree = FileTree::new(&app.ui_state.collection_items).expect("all item identifiers are unique");
+                
+                if tree.handle_mouse_event(&mut app.ui_state.collection_state, mouse_event, area)? {
+                    app.navigation.start_editing(PaneId::Collections)?;                    
+                    self.handle_selection(app)?;
+                    return Ok(true);
+                }
             }
         }
         Ok(false)

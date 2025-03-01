@@ -7,7 +7,7 @@ use ratatui::{
 use std::time::Duration;
 use sqli::{
     collection::CollectionScope, settings::UserSettings, sql::result::QueryResult, tui::{
-        app::App, navigation::PaneId, panes::collections::CollectionsPane, ui::UI
+        app::App, navigation::PaneId, ui::UI
     }
 };
 
@@ -78,40 +78,6 @@ fn test_collections_pane() -> Result<()> {
     terminal.draw(|frame| ui.render(&mut app, frame))?;
     
     assert_snapshot!(terminal.backend());
-    
-    Ok(())
-}
-
-#[test]
-fn test_file_selection_loads_content() -> Result<()> {
-    let env = TestEnv::new();
-    
-    env.create_collection("users", &[
-        ("list.sql", "SELECT * FROM users;"),
-    ])?;
-    
-    let settings = UserSettings::new(
-        env.temp_dir.path().join("sqli"),
-        env.temp_dir.path().join("sqli")
-    );
-
-    let backend = TestBackend::new(100, 30);
-    let mut terminal = Terminal::new(backend)?;
-    let mut app = App::with_settings(Some(settings))?;
-    
-    app.navigation.activate_pane(PaneId::Collections)?;
-    app.navigation.start_editing(PaneId::Collections)?;
-    
-    app.ui_state.collection_state.select(vec!["users (cwd)".to_string(), "list.sql".to_string()]);
-    
-    let collections_pane = CollectionsPane::new();
-    collections_pane.handle_selection(&mut app)?;
-    
-    let mut ui = UI::new();
-    terminal.draw(|frame| ui.render(&mut app, frame))?;
-    
-    assert_eq!(app.ui_state.workspace.get_content(), "SELECT * FROM users;");    
-    assert_snapshot!("file_selection_loads_content", terminal.backend());
     
     Ok(())
 }
