@@ -7,6 +7,7 @@
 ## known issues
 - [ ] buttons don't highlight on hover
 - [ ] resizing upwards is wonky
+- [ ] tui crashes when the query result contains a large number of columns (repro'd on a table with 57 columns...)
 
 ## nice to have
 
