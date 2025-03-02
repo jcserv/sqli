@@ -1,6 +1,6 @@
 [package]
 name = "sqli"
-version = "1.0.2"
+version = "1.0.3"
 authors = ["Jarrod Servilla <jarrod.servilla@gmail.com>"]
 license = "GPL-3.0-or-later"
 description = "A command line tool for interacting with Postgres databases"

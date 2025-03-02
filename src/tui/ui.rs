@@ -17,7 +17,7 @@ use super::{
     },
 };
 
-pub const VERSION: &str = "v1.0.2";
+pub const VERSION: &str = "v1.0.3";
 
 pub struct UI {
     header_pane: HeaderPane,
