@@ -28,7 +28,7 @@ enum Commands {
         conn: Option<String>,
         #[arg(short, long, help = "The SQL statement(s) to execute")]
         sql: String,
-        #[arg(short, long, help = "Output format (table, json, csv, raw)", default_value = "table")]
+        #[arg(short, long, help = "Output format (table, json, csv, raw, wide)", default_value = "table")]
         format: Option<String>,
     },
     /// Configure or list database connections

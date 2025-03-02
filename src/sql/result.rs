@@ -12,6 +12,7 @@ pub enum Format {
     Json,
     Csv,
     Raw,
+    Wide,
 }
 
 impl Format {
@@ -21,6 +22,7 @@ impl Format {
             "json" => Ok(Format::Json),
             "csv" => Ok(Format::Csv),
             "raw" => Ok(Format::Raw),
+            "wide" => Ok(Format::Wide),
             _ => Err(anyhow!("Unsupported format: {}. Supported formats: table, json, csv, raw", s))
         }
     }
@@ -79,6 +81,7 @@ pub fn format_output(result: &QueryResult, format: Format) -> Result<()> {
         Format::Json => format_json(result),
         Format::Csv => format_csv(result),
         Format::Raw => format_raw(result),
+        Format::Wide => format_wide(result),
     }
 }
 
@@ -173,3 +176,40 @@ fn format_raw(result: &QueryResult) -> Result<()> {
     Ok(())
 }
 
+fn format_wide(result: &QueryResult) -> Result<()> {
+    if result.columns.is_empty() {
+        return Ok(());
+    }
+
+    for (row_idx, row) in result.rows.iter().enumerate() {
+        println!("Row {}:", row_idx + 1);
+        println!("├────────────────────────────────┬─────────────────────────────────────────────");
+        
+        for (i, col) in result.columns.iter().enumerate() {
+            if i < row.len() {
+                let value = row[i].clone();
+                let wrapped_value = textwrap::fill(&value, 50);
+                let lines: Vec<&str> = wrapped_value.lines().collect();
+                
+                println!("│ {:<30} │ {}", truncate(col, 30), lines.get(0).unwrap_or(&""));
+                
+                for line in lines.iter().skip(1) {
+                    println!("│ {:<30} │ {}", "", line);
+                }
+            }
+        }
+        
+        println!("├────────────────────────────────┴─────────────────────────────────────────────");
+        println!();
+    }
+
+    Ok(())
+}
+
+fn truncate(s: &str, max_len: usize) -> String {
+    if s.len() <= max_len {
+        s.to_string()
+    } else {
+        format!("{}...", &s[0..max_len-3])
+    }
+}
