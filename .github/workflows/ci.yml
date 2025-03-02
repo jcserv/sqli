@@ -51,7 +51,7 @@ jobs:
         run: cargo test --verbose
   
   coverage:
-    name: Code Coverage
+    name: code-coverage
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -64,8 +64,8 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Generate code coverage
-        run: make coverage-ci
-        
+        run: cargo llvm-cov --tests --lcov --output-path lcov.info
+
       - name: Upload coverage to coveralls
         uses: coverallsapp/github-action@master
         with:
