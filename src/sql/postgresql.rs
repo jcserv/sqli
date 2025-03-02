@@ -114,3 +114,162 @@ fn truncate_string(s: &str, max_len: usize) -> String {
         format!("{}...", &s[0..max_len])
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+    use pgtemp::PgTempDB;
+    use sqlx::Connection;
+    
+    use crate::sql::interface::Executor;
+    use crate::sql::postgresql::PostgresExecutor;
+
+    async fn create_test_db() -> Result<(PgTempDB, String)> {
+        let db = PgTempDB::async_new().await;
+        let conn_uri = db.connection_uri();
+        
+        let mut conn = sqlx::postgres::PgConnection::connect(&conn_uri)
+            .await?;
+        
+        sqlx::query(
+            "CREATE TABLE users (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL
+            )"
+        ).execute(&mut conn).await?;
+        
+        sqlx::query(
+            "CREATE TABLE orders (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id),
+                item TEXT NOT NULL,
+                amount NUMERIC NOT NULL
+            )"
+        ).execute(&mut conn).await?;
+        
+        sqlx::query(
+            "INSERT INTO users (name, email) VALUES 
+            ('John Doe', 'john@example.com'),
+            ('Jane Smith', 'jane@example.com'),
+            ('Bob Johnson', 'bob@example.com'),
+            ('Alice Brown', 'alice@example.com'),
+            ('Charlie Wilson', 'charlie@example.com')"
+        ).execute(&mut conn).await?;
+        
+        sqlx::query(
+            "INSERT INTO orders (user_id, item, amount) VALUES 
+            (1, 'Item A', 10.99),
+            (2, 'Item B', 20.49),
+            (5, 'Item C', 15.99),
+            (5, 'Item D', 25.99),
+            (5, 'Item E', 5.99),
+            (3, 'Item F', 30.49),
+            (1, 'Item G', 12.99)"
+        ).execute(&mut conn).await?;
+        
+        Ok((db, conn_uri))
+    }
+
+    #[tokio::test]
+    async fn test_postgres_executor_simple_query() -> Result<()> {
+        let (_db, conn_uri) = create_test_db().await?;
+
+        let executor = PostgresExecutor {
+            url: conn_uri,
+            sql: "SELECT 1 as test".to_string(),
+        };
+
+        let result = executor.execute().await?;
+        
+        assert_eq!(result.columns.len(), 1);
+        assert_eq!(result.columns[0], "test");
+        assert_eq!(result.rows.len(), 1);
+        assert_eq!(result.rows[0][0], "1");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_postgres_executor_query_users() -> Result<()> {
+        let (_db, conn_uri) = create_test_db().await?;
+
+        let executor = PostgresExecutor {
+            url: conn_uri,
+            sql: "SELECT id, name, email FROM users ORDER BY id".to_string(),
+        };
+
+        let result = executor.execute().await?;
+        
+        assert_eq!(result.columns.len(), 3);
+        assert_eq!(result.columns, vec!["id", "name", "email"]);
+        assert_eq!(result.rows.len(), 5);
+        assert_eq!(result.rows[0][1], "John Doe");
+        assert_eq!(result.rows[1][1], "Jane Smith");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_postgres_executor_join_query() -> Result<()> {
+        let (_db, conn_uri) = create_test_db().await?;
+
+        let query = r#"
+            SELECT u.name, COUNT(o.id) as order_count
+            FROM users u
+            LEFT JOIN orders o ON u.id = o.user_id
+            GROUP BY u.name
+            ORDER BY order_count DESC
+        "#;
+
+        let executor = PostgresExecutor {
+            url: conn_uri,
+            sql: query.to_string(),
+        };
+
+        let result = executor.execute().await?;
+        
+        assert_eq!(result.columns.len(), 2);
+        assert_eq!(result.columns, vec!["name", "order_count"]);
+        assert!(result.rows.len() > 0);
+        
+        // Charlie Wilson should have the most orders (3)
+        assert_eq!(result.rows[0][0], "Charlie Wilson");
+        assert_eq!(result.rows[0][1], "3");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_postgres_executor_invalid_query() -> Result<()> {
+        let (_db, conn_uri) = create_test_db().await?;
+
+        let executor = PostgresExecutor {
+            url: conn_uri,
+            sql: "SELECT * FROM nonexistent_table".to_string(),
+        };
+
+        let result = executor.execute().await;
+        assert!(result.is_err());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_postgres_executor_parameterized_query() -> Result<()> {
+        let (_db, conn_uri) = create_test_db().await?;
+
+        let param_query = "SELECT * FROM users WHERE id = $1";
+
+        let executor = PostgresExecutor {
+            url: conn_uri,
+            sql: param_query.to_string(),
+        };
+
+        let result = executor.execute().await;
+        
+        assert!(result.is_err());
+
+        Ok(())
+    }
+}

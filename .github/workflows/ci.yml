@@ -19,7 +19,7 @@ env:
 
 jobs:
   ci:
-    name: ci
+    name: test
     runs-on: ubuntu-latest
 
     steps:
@@ -29,6 +29,12 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
+
+      - name: Install postgres
+        run: sudo apt-get install postgresql postgresql-client
+      
+      - name: Update path
+        run: find /usr/lib/postgresql/ -type d -name "bin" >> $GITHUB_PATH
 
       - name: Cache dependencies
         uses: actions/cache@v3
@@ -59,6 +65,12 @@ jobs:
 
       - name: Install Rust
         run: rustup toolchain install stable --component llvm-tools
+
+      - name: Install postgres
+        run: sudo apt-get install postgresql postgresql-client
+      
+      - name: Update path
+        run: find /usr/lib/postgresql/ -type d -name "bin" >> $GITHUB_PATH
 
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov

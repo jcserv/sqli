@@ -5,6 +5,7 @@
 - [ ] query: when using a sql file with parameters, prompt for values
 
 ## known issues
+- [ ] multi-statement queries don't work
 - [ ] buttons don't highlight on hover
 - [ ] resizing upwards is wonky
 
