@@ -192,7 +192,7 @@ impl<'a> WideTable<'a> {
     }
 }
 
-impl<'a> StatefulWidget for WideTable<'a> {
+impl StatefulWidget for WideTable<'_> {
     type State = WideTableState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
