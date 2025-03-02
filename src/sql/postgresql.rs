@@ -64,7 +64,7 @@ fn convert_pg_value_to_string(row: &PgRow, idx: usize, col: &sqlx::postgres::PgC
         "FLOAT4" | "REAL" => row.try_get::<f32, _>(idx).map(|v| v.to_string()).unwrap_or_else(|_| "NULL".to_string()),
         "FLOAT8" | "DOUBLE PRECISION" => row.try_get::<f64, _>(idx).map(|v| v.to_string()).unwrap_or_else(|_| "NULL".to_string()),
         "NUMERIC" | "DECIMAL" => row.try_get::<String, _>(idx).unwrap_or_else(|_| "NULL".to_string()),
-        "VARCHAR" | "CHAR" | "TEXT" | "NAME" => row.try_get::<String, _>(idx).map(|v| v).unwrap_or_else(|_| "NULL".to_string()),
+        "VARCHAR" | "CHAR" | "TEXT" | "NAME" => row.try_get::<String, _>(idx).unwrap_or_else(|_| "NULL".to_string()),
         "BOOL" | "BOOLEAN" => row.try_get::<bool, _>(idx).map(|v| v.to_string()).unwrap_or_else(|_| "NULL".to_string()),
         "DATE" => row.try_get::<NaiveDate, _>(idx)
             .map(|v| v.to_string())

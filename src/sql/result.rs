@@ -191,7 +191,7 @@ fn format_wide(result: &QueryResult) -> Result<()> {
                 let wrapped_value = textwrap::fill(&value, 50);
                 let lines: Vec<&str> = wrapped_value.lines().collect();
                 
-                println!("│ {:<30} │ {}", truncate(col, 30), lines.get(0).unwrap_or(&""));
+                println!("│ {:<30} │ {}", truncate(col, 30), lines.first().unwrap_or(&""));
                 
                 for line in lines.iter().skip(1) {
                     println!("│ {:<30} │ {}", "", line);
