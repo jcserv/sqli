@@ -13,7 +13,7 @@ use crate::{
     sql::result::QueryResult, 
     tui::{
         app::App,
-        navigation::PaneId,
+        navigation::PaneId, widgets::wide_table::{WideTable, WideTableState},
     }
 };
 
@@ -21,6 +21,8 @@ use super::pane::{Pane, PaneExt};
 
 pub struct ResultsPane {
     table_state: TableState,
+    wide_table_state: Option<WideTableState>,
+    use_wide_table: bool,
 }
 
 impl Default for ResultsPane {
@@ -33,35 +35,61 @@ impl ResultsPane {
     pub fn new() -> Self {
         Self {
             table_state: TableState::default().with_selected(0),
+            wide_table_state: None,
+            use_wide_table: false,
         }
     }
 
     fn next_row(&mut self, max_idx: usize) {
-        let i = match self.table_state.selected() {
-            Some(i) => {
-                if i >= max_idx {
-                    0
-                } else {
-                    i + 1
-                }
+        if self.use_wide_table {
+            if let Some(state) = &mut self.wide_table_state {
+                state.next_row(max_idx);
             }
-            None => 0,
-        };
-        self.table_state.select(Some(i));
+        } else {
+            let i = match self.table_state.selected() {
+                Some(i) => {
+                    if i >= max_idx {
+                        0
+                    } else {
+                        i + 1
+                    }
+                }
+                None => 0,
+            };
+            self.table_state.select(Some(i));
+        }
     }
 
     fn previous_row(&mut self, max_idx: usize) {
-        let i = match self.table_state.selected() {
-            Some(i) => {
-                if i == 0 {
-                    max_idx
-                } else {
-                    i - 1
-                }
+        if self.use_wide_table {
+            if let Some(state) = &mut self.wide_table_state {
+                state.previous_row(max_idx);
             }
-            None => 0,
-        };
-        self.table_state.select(Some(i));
+        } else {
+            let i = match self.table_state.selected() {
+                Some(i) => {
+                    if i == 0 {
+                        max_idx
+                    } else {
+                        i - 1
+                    }
+                }
+                None => 0,
+            };
+            self.table_state.select(Some(i));
+        }
+    }
+
+    fn scroll_left(&mut self) {
+        if let Some(state) = &mut self.wide_table_state {
+            state.scroll_left();
+        }
+    }
+
+    fn scroll_right(&mut self) {
+        if let Some(state) = &mut self.wide_table_state {
+            state.scroll_right();
+        }
     }
 }
 
@@ -85,13 +113,14 @@ impl Pane for ResultsPane {
     }
 
     fn render_content(&mut self, app: &mut App, frame: &mut Frame, area: Rect) {
-        let header_cells = app.query_state.query_result.columns.iter()
-            .map(|h| Cell::from(h.as_str()).style(Style::default().bold()));
-        let header = Row::new(header_cells)
-            .style(Style::default().bg(Color::DarkGray))
-            .height(1);
+        // let header_cells = app.query_state.query_result.columns.iter()
+        //     .map(|h| Cell::from(h.as_str()).style(Style::default().bold()));
+        // let header = Row::new(header_cells)
+        //     .style(Style::default().bg(Color::DarkGray))
+        //     .height(1);
     
-        let constraints = calculate_column_constraints(&app.query_state.query_result);
+        // let constraints = calculate_column_constraints(&app.query_state.query_result);
+        let column_count = app.query_state.query_result.columns.len();
         let row_count = app.query_state.query_result.rows.len();
 
         if row_count == 0 || app.query_state.query_result.columns.is_empty() {
@@ -102,46 +131,88 @@ impl Pane for ResultsPane {
             frame.render_widget(empty_message, area);
             return;
         }
+
+        self.use_wide_table = column_count > 8;
             
-        let rows = app.query_state.query_result.rows.iter().map(|item| {
-            let cells = item.iter().map(|c| Cell::from(c.as_str()));
-            Row::new(cells).height(1)
-        });
+        if self.use_wide_table {
+            if self.wide_table_state.is_none() {
+                self.wide_table_state = Some(WideTableState::new(column_count));
+            }
+
+            if let Some(state) = &mut self.wide_table_state {
+                let wide_table = WideTable::new(&app.query_state.query_result)
+                    .highlight_style(
+                        Style::default()
+                            .bg(Color::LightBlue)
+                            .fg(Color::Black)
+                            .add_modifier(Modifier::BOLD)
+                    )
+                    .highlight_symbol(">> ");
+
+                frame.render_stateful_widget(wide_table, area, state);
+            }
+        } else {
+            let header_cells = app.query_state.query_result.columns.iter()
+                .map(|h| Cell::from(h.as_str()).style(Style::default().bold()));
+            let header = Row::new(header_cells)
+                .style(Style::default().bg(Color::DarkGray))
+                .height(1);
         
-        let table = Table::new(rows, constraints)
-            .header(header)
-            .row_highlight_style(
-                Style::default()
-                    .bg(Color::LightBlue)
-                    .fg(Color::Black)
-                    .add_modifier(Modifier::BOLD)
-            )
-            .highlight_symbol(">> ");
-    
-        frame.render_stateful_widget(table, area, &mut self.table_state);
-    
-        let scrollbar = Scrollbar::default()
-            .orientation(ScrollbarOrientation::VerticalRight)
-            .begin_symbol(None)
-            .end_symbol(None);
-    
-        frame.render_stateful_widget(
-            scrollbar,
-            area,
-            &mut ScrollbarState::new(row_count).position(self.table_state.selected().unwrap_or(0)),
-        );
+            let constraints = calculate_column_constraints(&app.query_state.query_result);
+            
+            let rows = app.query_state.query_result.rows.iter().map(|item| {
+                let cells = item.iter().map(|c| Cell::from(c.as_str()));
+                Row::new(cells).height(1)
+            });
+            
+            let table = Table::new(rows, constraints)
+                .header(header)
+                .row_highlight_style(
+                    Style::default()
+                        .bg(Color::LightBlue)
+                        .fg(Color::Black)
+                        .add_modifier(Modifier::BOLD)
+                )
+                .highlight_symbol(">> ");
+        
+            frame.render_stateful_widget(table, area, &mut self.table_state);
+        
+            let scrollbar = Scrollbar::default()
+                .orientation(ScrollbarOrientation::VerticalRight)
+                .begin_symbol(None)
+                .end_symbol(None);
+        
+            frame.render_stateful_widget(
+                scrollbar,
+                area,
+                &mut ScrollbarState::new(row_count).position(self.table_state.selected().unwrap_or(0)),
+            );
+        }
     }
 
     fn get_custom_instructions(&self, _app: &App, is_editing: bool) -> Line<'static> {
         if is_editing {
-            Line::from(vec![
-                " Esc ".blue().bold(),
-                "Stop Editing ".white(),
-                " ↑/↓ ".blue().bold(),
-                "Navigate ".white(),
-                " ^C ".blue().bold(),
-                "Quit ".white(),
-            ])
+            if self.use_wide_table {
+                Line::from(vec![
+                    " Esc ".blue().bold(),
+                    "Stop Editing ".white(),
+                    " ↑/↓ ".blue().bold(),
+                    "Navigate Rows ".white(),
+                    " ←/→ ".blue().bold(),
+                    "Scroll Columns ".white(),
+                    " ^C ".blue().bold(),
+                    "Quit ".white(),
+                ])
+            } else {
+                Line::from(vec![
+                    " Esc ".blue().bold(),
+                    "Stop Editing ".white(),
+                    " ↑/↓ ".blue().bold(),
+                    "Navigate ".white(),
+                    " ^C ".blue().bold(),
+                    "Quit ".white(),
+                ])
+            }
         } else {
             Line::from(vec![
                 " Tab ".blue().bold(),
@@ -165,6 +236,14 @@ impl Pane for ResultsPane {
             },
             KeyCode::Down => {
                 self.next_row(app.query_state.query_result.rows.len().saturating_sub(1));
+                Ok(false)
+            },
+            KeyCode::Left if self.use_wide_table => {
+                self.scroll_left();
+                Ok(false)
+            },
+            KeyCode::Right if self.use_wide_table => {
+                self.scroll_right();
                 Ok(false)
             },
             _ => Ok(false)

@@ -24,7 +24,6 @@ features:
 - [ ] connection options
 
 ui/ux improvements:
-- [ ] should init with config.yaml if doesn't exist
 - [ ] scroll handlers
 - [ ] copy button/keybind
 - [ ] click to move cursor in workspace
@@ -34,3 +33,5 @@ ui/ux improvements:
 - [X] allow configs to be referenced by name case insensitively
 - [X] new file modal content is being intersected by workspace content
 - [X] default workspace folder should be .sqli, instead of sqli/ 
+- [X] should init with config.yaml if doesn't exist
+- [X] tui crashes when the query result contains a large number of columns (repro'd on a table with 57 columns...)
