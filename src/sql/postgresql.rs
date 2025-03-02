@@ -218,8 +218,6 @@ mod tests {
         let db = PostgresTestDb::new();
         db.setup()?;
 
-        // Note: for now, parameters are actually a limitation since we don't have a way to 
-        // pass parameter values through CLI. This just confirms the behavior.
         let param_query = "SELECT * FROM users WHERE id = $1";
 
         let executor = PostgresExecutor {
@@ -229,7 +227,6 @@ mod tests {
 
         let result = executor.execute().await;
         
-        // This should fail because we haven't provided a value for $1
         assert!(result.is_err());
 
         db.teardown()?;
@@ -406,8 +403,6 @@ mod tests {
         if env::var("SKIP_DB_TESTS").is_ok() {
             return false;
         }
-        
-        let db = PostgresTestDb::new();
-        db.is_postgres_available()
+        return true;
     }
 }
