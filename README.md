@@ -1,6 +1,6 @@
 # sqli
 
-![visitors](https://img.shields.io/endpoint?url=https://vu-mi.com/api/v1/views?id=jcserv/sqli) ![downloads](https://img.shields.io/crates/d/sqli) [![code coverage](https://coveralls.io/repos/github/jcserv/sqli/badge.svg?branch=main)](https://coveralls.io/github/jcserv/sqli?branch=main)
+![downloads](https://img.shields.io/crates/d/sqli) [![code coverage](https://coveralls.io/repos/github/jcserv/sqli/badge.svg?branch=main)](https://coveralls.io/github/jcserv/sqli?branch=main)
 
 sqli (as in, "sql" + "cli" = "sqli") is a simple & sleek SQL client, used as a terminal UI or as a command line tool, to help you query your Postgres database!
 
